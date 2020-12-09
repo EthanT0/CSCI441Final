@@ -79,6 +79,8 @@ void Skybox::draw(glm::mat4 rotationMtx){
 
     glUniformMatrix4fv(skyboxShaderUniforms.mvpMatrix, 1, GL_FALSE, &rotationMtx[0][0] );
 
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTextureHandle);
     glBindVertexArray( skyboxVAO );
     glDrawElements( GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, (void*)0 );
 
