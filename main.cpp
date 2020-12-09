@@ -20,6 +20,7 @@
 
 #include "kirb.h"
 
+#include "Ship.h"
 #include "Skybox.h"
 
 //*************************************************************************************
@@ -52,6 +53,7 @@ GLboolean showCage, showCurve;
 
 // Global variables for our heroes and the skybox
 kirb kirbcopter;
+Ship spaceship;
 Skybox skybox;
 
 CSCI441::ShaderProgram *lightingShader = nullptr;   // the wrapper for our shader program
@@ -75,6 +77,7 @@ struct LightingShaderAttributes {       // stores the locations of all of our sh
 } lightingShaderAttributes;
 
 char* skyboxPathways[] = {"data/right.png", "data/left.png", "data/up.png", "data/down.png", "data/front.png", "data/back.png"};
+char* shipTexturePathway = "data/ship.png";
 
 //*************************************************************************************
 //
@@ -228,6 +231,9 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
     glm::mat4 rotationMtx = projMtx * glm::mat4(glm::mat3(viewMtx));
     skybox.draw(rotationMtx);
 
+    spaceship.draw(glm::mat4(1), viewMtx, projMtx);
+
+
     lightingShader->useProgram();
     lastTime = glfwGetTime();
     kirbcopter.draw(viewMtx, projMtx, glm::mat4(1));
@@ -265,10 +271,9 @@ void updateScene() {
     if( keys[GLFW_KEY_SPACE] ) {
         flyInput += 1;
     }
-    kirbcopter.move(verticalInput, horizontalInput, flyInput);
 
     deltaTime = glfwGetTime() - lastTime;
-    kirbcopter.animate(deltaTime);
+    spaceship.rotate(verticalInput, horizontalInput, deltaTime);
     kirbcopter.heightmapCollision(0);
     kirbcopter.boundaryCollision(glm::vec3(-100, -100, -100), glm::vec3(100, 100, 100));
 }
@@ -399,6 +404,8 @@ void setupBuffers() {
 
     kirbcopter = kirb(glm::vec3(0, 0 + 4, 0), 0, lightingShaderUniforms.mvpMatrix, lightingShaderUniforms.normalMatrix, lightingShaderUniforms.objectMatrix, lightingShaderUniforms.materialColor );
     skybox = Skybox(skyboxPathways);
+    spaceship = Ship(shipTexturePathway);
+
     updateCameraDirection();
 }
 
@@ -483,8 +490,8 @@ int main() {
         glViewport( 0, 0, framebufferWidth, framebufferHeight );
 
         // set up our look at matrix to position our camera
-        glm::vec3 cameraWorldPos = kirbcopter.getPosition() + cameraRadius * cameraDirection;
-        glm::mat4 viewMtx = glm::lookAt( cameraWorldPos, kirbcopter.getPosition(), glm::vec3(0, 1, 0));
+        glm::vec3 cameraWorldPos = spaceship.getPosition() + cameraRadius * cameraDirection;
+        glm::mat4 viewMtx = glm::lookAt( cameraWorldPos, spaceship.getPosition(), glm::vec3(0, 1, 0));
 
         renderScene( viewMtx, projMtx);					// draw everything to the window
 
