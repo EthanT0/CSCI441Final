@@ -19,6 +19,8 @@
 #include <ctime>
 
 #include "kirb.h"
+#include "Asteroid.h"
+
 //*************************************************************************************
 //
 // Global Parameters
@@ -53,6 +55,7 @@ GLboolean showCage, showCurve;
 
 // Global variables for our heroes and the landscape
 kirb kirbcopter;
+Asteroid asteroid1;
 
 struct BuildingData {                   // stores the information unique to a single building
     glm::mat4 modelMatrix;                  // the translation/scale of each building
@@ -61,6 +64,8 @@ struct BuildingData {                   // stores the information unique to a si
 std::vector<BuildingData> buildings;    // information for all of our buildings
 
 GLuint groundVAO;                       // the VAO descriptor for our ground plane
+
+
 
 // Shader Program information
 
@@ -216,6 +221,7 @@ void updateCameraDirection() {
     cameraDirection = glm::vec3(cos(cameraTheta) * sin(cameraPhi), cos(cameraPhi), sin(cameraTheta) * sin(cameraPhi));
 }
 
+
 // computeAndSendMatrixUniforms() ///////////////////////////////////////////////
 //
 // This function precomputes the matrix uniforms CPU-side and then sends them
@@ -365,6 +371,8 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
     lightingShader->useProgram();
     lastTime = glfwGetTime();
     kirbcopter.draw(viewMtx, projMtx, glm::mat4(1));
+
+    asteroid1.draw(viewMtx, projMtx, glm::vec3(10, 10, 10), asteroid1.rotationAngle+0.01 );
 
 }
 
@@ -542,14 +550,7 @@ void setupShaders() {
     skyboxShaderUniforms.skybox = skyboxShader->getUniformLocation("skybox");
 
     skyboxShaderAttributes.vPos         = skyboxShader->getAttributeLocation("vPos");
-}
 
-// setupBuffers() //////////////////////////////////////////////////////////////
-//
-//      Create our VAOs.  Send vertex data to the GPU to be stored.
-//
-////////////////////////////////////////////////////////////////////////////////
-void setupBuffers() {
 
     CSCI441::drawSolidSphere( 0.5, 16, 16 );
     CSCI441::drawSolidCube( 1.0 );
@@ -559,6 +560,8 @@ void setupBuffers() {
     lastTime = glfwGetTime();
 
     kirbcopter = kirb(glm::vec3(0, 0 + 4, 0), 0, lightingShaderUniforms.mvpMatrix, lightingShaderUniforms.normalMatrix, lightingShaderUniforms.objectMatrix, lightingShaderUniforms.materialColor );
+    asteroid1 = Asteroid("textures/asteroid.jpg", glm::vec3(10, 10, 10), glm::vec3(1, 1, 1), glm::vec3(10, 10, 10));
+    // TODO: make function to randomly spawn and move these
 
     updateCameraDirection();
 }
@@ -618,10 +621,10 @@ int main() {
     setupOpenGL();										    // initialize all of the OpenGL specific information
     setupGLEW();											// initialize all of the GLEW specific information
 
+
     CSCI441::OpenGLUtils::printOpenGLInfo();
 
     setupShaders();                                         // load our shader program into memory
-    setupBuffers();
     setupScene();
 
     // needed to connect our 3D Object Library to our shader
