@@ -20,6 +20,9 @@
 
 #include "kirb.h"
 
+#include "Ship.h"
+#include "Skybox.h"
+
 //*************************************************************************************
 //
 // Global Parameters
@@ -28,16 +31,12 @@
 // set to initial values for convenience
 const GLint WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
 
-bool noDecorations = false;
-
 GLboolean leftMouseDown;    	 		// status ff the left mouse button is pressed
 glm::vec2 mousePosition;				// last known X and Y of the mouse
-
 
 glm::vec3 cameraDirection;
 GLfloat cameraSensivity = 0.02f;
 GLfloat cameraTheta, cameraPhi, cameraRadius = 20;
-
 
 GLfloat lastTime;
 GLfloat deltaTime;                      // Frametime number, updated every frame
@@ -52,21 +51,10 @@ GLint controlKey;                       // Keeps track of left control's press s
 GLboolean keys[256] = {0};              // keep track of our key states
 GLboolean showCage, showCurve;
 
-// Global variables for our heroes and the landscape
+// Global variables for our heroes and the skybox
 kirb kirbcopter;
-
-struct BuildingData {                   // stores the information unique to a single building
-    glm::mat4 modelMatrix;                  // the translation/scale of each building
-    glm::vec3 color;                        // the color of each building
-};
-std::vector<BuildingData> buildings;    // information for all of our buildings
-
-GLuint groundVAO;                       // the VAO descriptor for our ground plane
-
-// Shader Program information
-
-CSCI441::ShaderProgram *lineShader = nullptr;   // the wrapper for our shader program
-
+Ship spaceship;
+Skybox skybox;
 
 CSCI441::ShaderProgram *lightingShader = nullptr;   // the wrapper for our shader program
 struct LightingShaderUniforms {         // stores the locations of all of our shader uniforms
@@ -88,52 +76,8 @@ struct LightingShaderAttributes {       // stores the locations of all of our sh
     GLint vNormal;
 } lightingShaderAttributes;
 
-
-CSCI441::ShaderProgram *waterShader = nullptr;   // the wrapper for our shader program
-struct waterShaderUniforms {         // stores the locations of all of our shader uniforms
-    GLint mvpMatrix;
-    GLint objectMatrix;
-    GLint cameraPos;
-    GLint skybox;                 // Skybox texture sampler
-
-
-    GLint lightDirection;
-    GLint lightColor;
-    GLint skyColor;
-
-    GLint pointLight4Color;
-    GLint pointLight4Pos;
-
-    GLint time;
-
-}waterShaderUniforms;
-
-struct waterShaderAttributes {       // stores the locations of all of our shader attributes
-    GLint vPos;
-} waterShaderAttributes;
-
-
-
-
-
-CSCI441::ShaderProgram *skyboxShader = nullptr;   // the wrapper for our shader program
-struct skyboxShaderUniforms {         // stores the locations of all of our shader uniforms
-    GLint mvpMatrix;
-    GLint skybox;                 // Skybox texture sampler
-}skyboxShaderUniforms;
-
-struct skyboxShaderAttributes {       // stores the locations of all of our shader attributes
-    GLint vPos;
-} skyboxShaderAttributes;
-
-GLuint skyboxVAO, skyboxVBO, skyboxIBO;
-
-
-char* bezierPathway = "data/controlPoints.csv";
-
-GLuint skyboxTextureHandle;
-//char* skyboxPathways[] = {"data/right.png", "data/left.png", "data/up.png", "data/down.png", "data/front.png", "data/back.png"};
-char* skyboxPathways[] = {"data/right.png", "data/left.png", "data/down.png", "data/up.png", "data/front.png", "data/back.png"};
+char* skyboxPathways[] = {"data/right.png", "data/left.png", "data/up.png", "data/down.png", "data/front.png", "data/back.png"};
+char* shipTexturePathway = "data/ship.png";
 
 //*************************************************************************************
 //
@@ -144,65 +88,7 @@ char* skyboxPathways[] = {"data/right.png", "data/left.png", "data/down.png", "d
 // this function registers the VAO and sets up uv/coordinates for the skybox
 void setupSkybox()
 {
-    fprintf(stdout, "Begining setting up skybox\n");
-    glGenTextures(1, &skyboxTextureHandle);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTextureHandle);
-    int width, height, channels;
-    for(int i = 0; i < 6; i ++ ) {
-        unsigned char *data = stbi_load( skyboxPathways[i], &width, &height, &channels, 0);
-        if(data) {
-            fprintf(stdout, "Loaded cubemap texture [%s]\n", skyboxPathways[i] );
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
-            );
-        }
-        else {
-            fprintf(stdout, "Cubemap texture failed to load [%s]\n", skyboxPathways[i] );
-        }
-        stbi_image_free(data);
-    }
 
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-
-    // create our platform
-    glm::vec3 cubeVertices[8] = {
-            glm::vec3(-1.0f, -1.0f, -1.0f),
-            glm::vec3(1.0f,  -1.0f, -1.0f),
-            glm::vec3(-1.0f, -1.0f, 1.0f),
-            glm::vec3(1.0f,  -1.0f, 1.0f),
-            glm::vec3(-1.0f, 1.0f, -1.0f),
-            glm::vec3(1.0f,  1.0f, -1.0f),
-            glm::vec3(-1.0f, 1.0f, 1.0f),
-            glm::vec3(1.0f,  1.0f, 1.0f)
-    };
-    unsigned short cubeIndices[36] = {0, 1, 2, 1, 2, 3,
-                                      4, 5, 6, 5, 6, 7,
-                                      0, 2, 4, 2, 4, 6,
-                                      1, 3, 5, 3, 5, 7,
-                                      0, 1, 4, 1, 4, 5,
-                                      2, 3, 6, 3, 6, 7};
-
-    glGenVertexArrays( 1, &skyboxVAO );
-    glBindVertexArray( skyboxVAO );
-
-    glGenBuffers( 1, &skyboxVBO );
-    glBindBuffer( GL_ARRAY_BUFFER, skyboxVBO );
-    glBufferData( GL_ARRAY_BUFFER, 8 * sizeof(glm::vec3), cubeVertices, GL_STATIC_DRAW );
-
-    glEnableVertexAttribArray( skyboxShaderAttributes.vPos );
-    glVertexAttribPointer( skyboxShaderAttributes.vPos, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0 );
-
-    glGenBuffers(1, &skyboxIBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxIBO);
-
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLushort) * 36, &cubeIndices[0], GL_STATIC_DRAW);
-
-    fprintf( stdout, "[INFO]: Skybox read in with VAO %d\n", skyboxVAO );
 }
 
 
@@ -308,8 +194,6 @@ static void cursor_callback( GLFWwindow* window, double xPos, double yPos) {
                     cameraRadius += (yPos - mousePosition.y) * cameraSensivity;
                     updateCameraDirection();
                 }
-
-
             }
         }
     }
@@ -337,22 +221,6 @@ static void mouse_button_callback( GLFWwindow *window, int button, int action, i
 //
 // Drawing Funcs
 
-// drawSkybox()
-//
-// draws the skybox before everything else is drawing, and then re-clears the depth buffer.
-void drawSkybox(glm::mat4 rotationMtx){
-    skyboxShader->useProgram();
-
-    glDepthMask(GL_FALSE);
-
-    glUniformMatrix4fv(skyboxShaderUniforms.mvpMatrix, 1, GL_FALSE, &rotationMtx[0][0] );
-
-    glBindVertexArray( skyboxVAO );
-    glDrawElements( GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, (void*)0 );
-
-    glDepthMask(GL_TRUE);
-}
-
 // renderScene() ///////////////////////////////////////////////////////////////
 //
 //  Responsible for drawing all of our objects that make up our world.  Must
@@ -361,7 +229,10 @@ void drawSkybox(glm::mat4 rotationMtx){
 ////////////////////////////////////////////////////////////////////////////////
 void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
     glm::mat4 rotationMtx = projMtx * glm::mat4(glm::mat3(viewMtx));
-    drawSkybox(rotationMtx);
+    skybox.draw(rotationMtx);
+
+    spaceship.draw(glm::mat4(1), viewMtx, projMtx);
+
 
     lightingShader->useProgram();
     lastTime = glfwGetTime();
@@ -400,10 +271,9 @@ void updateScene() {
     if( keys[GLFW_KEY_SPACE] ) {
         flyInput += 1;
     }
-    kirbcopter.move(verticalInput, horizontalInput, flyInput);
 
     deltaTime = glfwGetTime() - lastTime;
-    kirbcopter.animate(deltaTime);
+    spaceship.rotate(verticalInput, horizontalInput, deltaTime);
     kirbcopter.heightmapCollision(0);
     kirbcopter.boundaryCollision(glm::vec3(-100, -100, -100), glm::vec3(100, 100, 100));
 }
@@ -501,7 +371,6 @@ void setupGLEW() {
 //
 ////////////////////////////////////////////////////////////////////////////////
 void setupShaders() {
-    lineShader = new CSCI441::ShaderProgram( "shaders/flat.v.glsl", "shaders/flat.f.glsl" );
 
     lightingShader = new CSCI441::ShaderProgram( "shaders/vertexshader.v.glsl", "shaders/vertexshader.f.glsl" );
     lightingShaderUniforms.mvpMatrix        = lightingShader->getUniformLocation("mvpMatrix");
@@ -517,32 +386,6 @@ void setupShaders() {
 
     lightingShaderAttributes.vPos           = lightingShader->getAttributeLocation("vPos");
     lightingShaderAttributes.vNormal        = lightingShader->getAttributeLocation("vNormal");
-
-
-
-    waterShader = new CSCI441::ShaderProgram( "shaders/water.v.glsl", "shaders/water.f.glsl" );
-    waterShaderUniforms.mvpMatrix        = waterShader->getUniformLocation("mvpMatrix");
-    waterShaderUniforms.lightDirection   = waterShader->getUniformLocation("lightDirection");
-    waterShaderUniforms.objectMatrix     = waterShader->getUniformLocation("objectMatrix");
-    waterShaderUniforms.lightColor       = waterShader->getUniformLocation("lightColor");
-
-    waterShaderUniforms.skybox           = waterShader->getUniformLocation("skybox");
-    waterShaderUniforms.cameraPos        = waterShader->getUniformLocation("cameraPos");
-
-    waterShaderUniforms.pointLight4Color = waterShader->getUniformLocation("pointLight4Color");
-    waterShaderUniforms.pointLight4Pos   = waterShader->getUniformLocation("pointLight4Pos");
-    waterShaderUniforms.time   = waterShader->getUniformLocation("time");
-
-
-
-    waterShaderAttributes.vPos           = waterShader->getAttributeLocation("vPos");
-
-
-    skyboxShader = new CSCI441::ShaderProgram( "shaders/skybox.v.glsl", "shaders/skybox.f.glsl" );
-    skyboxShaderUniforms.mvpMatrix      = skyboxShader->getUniformLocation("mvpMatrix");
-    skyboxShaderUniforms.skybox = skyboxShader->getUniformLocation("skybox");
-
-    skyboxShaderAttributes.vPos         = skyboxShader->getAttributeLocation("vPos");
 }
 
 // setupBuffers() //////////////////////////////////////////////////////////////
@@ -560,6 +403,8 @@ void setupBuffers() {
     lastTime = glfwGetTime();
 
     kirbcopter = kirb(glm::vec3(0, 0 + 4, 0), 0, lightingShaderUniforms.mvpMatrix, lightingShaderUniforms.normalMatrix, lightingShaderUniforms.objectMatrix, lightingShaderUniforms.materialColor );
+    skybox = Skybox(skyboxPathways);
+    spaceship = Ship(shipTexturePathway);
 
     updateCameraDirection();
 }
@@ -592,15 +437,6 @@ void setupScene() {
     glm::vec3 kirbPos = kirbcopter.getPosition();
     glUniform3fv(lightingShaderUniforms.pointLight4Color, 1, &kirbLightColor[0]);
     glUniform3fv(lightingShaderUniforms.pointLight4Pos, 1, &kirbPos[0]);
-
-
-    waterShader->useProgram();
-
-    glUniform3fv(waterShaderUniforms.lightDirection, 1, &lightDirection[0]);
-    glUniform3fv(waterShaderUniforms.lightColor, 1, &lightColor[0]);
-
-    glUniform3fv(waterShaderUniforms.pointLight4Color, 1, &kirbLightColor[0]);
-    glUniform3fv(waterShaderUniforms.pointLight4Pos, 1, &kirbPos[0]);
 }
 
 
@@ -654,12 +490,8 @@ int main() {
         glViewport( 0, 0, framebufferWidth, framebufferHeight );
 
         // set up our look at matrix to position our camera
-        glm::vec3 cameraWorldPos = kirbcopter.getPosition() + cameraRadius * cameraDirection;
-        glm::mat4 viewMtx = glm::lookAt( cameraWorldPos, kirbcopter.getPosition(), glm::vec3(0, 1, 0));
-
-
-        waterShader->useProgram();
-        glUniform3fv(waterShaderUniforms.cameraPos, 1, &cameraWorldPos[0]);
+        glm::vec3 cameraWorldPos = spaceship.getPosition() + cameraRadius * cameraDirection;
+        glm::mat4 viewMtx = glm::lookAt( cameraWorldPos, spaceship.getPosition(), glm::vec3(0, 1, 0));
 
         renderScene( viewMtx, projMtx);					// draw everything to the window
 
@@ -673,7 +505,6 @@ int main() {
     fprintf( stdout, "[INFO]: ...freeing memory...\n" );
 
     delete lightingShader;                                  // delete our shader program
-    glDeleteBuffers(1, &groundVAO);                         // delete our ground VAO
     CSCI441::deleteObjectVBOs();                            // delete our library VBOs
     CSCI441::deleteObjectVAOs();                            // delete our library VAOs
 
