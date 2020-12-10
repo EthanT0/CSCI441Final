@@ -19,6 +19,7 @@
 #include <ctime>
 
 #include "kirb.h"
+#include "Asteroid.h"
 
 #include "Ship.h"
 #include "Skybox.h"
@@ -70,6 +71,8 @@ GLboolean showCage, showCurve;
 kirb kirbcopter;
 Ship spaceship;
 Skybox skybox;
+Asteroid asteroid1;
+
 
 CSCI441::ShaderProgram *lightingShader = nullptr;   // the wrapper for our shader program
 struct LightingShaderUniforms {         // stores the locations of all of our shader uniforms
@@ -141,6 +144,7 @@ void updateCameraDirection() {
         Camera.lookAtPoint = Camera.eyePos + Camera.camDir;
     }
 }
+
 
 // computeAndSendMatrixUniforms() ///////////////////////////////////////////////
 //
@@ -290,6 +294,8 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
     lightingShader->useProgram();
     lastTime = glfwGetTime();
     kirbcopter.draw(viewMtx, projMtx, glm::mat4(1));
+
+    asteroid1.draw(viewMtx, projMtx, glm::vec3(10, 10, 10), asteroid1.rotationAngle+0.01 );
 
 }
 
@@ -472,25 +478,12 @@ void setupShaders() {
 
     lightingShaderAttributes.vPos           = lightingShader->getAttributeLocation("vPos");
     lightingShaderAttributes.vNormal        = lightingShader->getAttributeLocation("vNormal");
-}
 
-// setupBuffers() //////////////////////////////////////////////////////////////
-//
-//      Create our VAOs.  Send vertex data to the GPU to be stored.
-//
-////////////////////////////////////////////////////////////////////////////////
-void setupBuffers() {
 
-    CSCI441::drawSolidSphere( 0.5, 16, 16 );
-    CSCI441::drawSolidCube( 1.0 );
-    CSCI441::drawSolidTorus(1.0f, 5.0f, 10, 10);
-    CSCI441::drawSolidCylinder( 1.0f, 1.0f, 1, 2, 16 );
-
-    lastTime = glfwGetTime();
-
-    kirbcopter = kirb(glm::vec3(0, 0 + 4, 0), 0, lightingShaderUniforms.mvpMatrix, lightingShaderUniforms.normalMatrix, lightingShaderUniforms.objectMatrix, lightingShaderUniforms.materialColor );
     skybox = Skybox(skyboxPathways);
     spaceship = Ship(shipTexturePathway);
+    asteroid1 = Asteroid("textures/asteroid.jpg", glm::vec3(10, 10, 10), glm::vec3(1, 1, 1), glm::vec3(10, 10, 10));
+    // TODO: make function to randomly spawn and move these
 
     //updateCameraDirection();
 }
@@ -547,10 +540,10 @@ int main() {
     setupOpenGL();										    // initialize all of the OpenGL specific information
     setupGLEW();											// initialize all of the GLEW specific information
 
+
     CSCI441::OpenGLUtils::printOpenGLInfo();
 
     setupShaders();                                         // load our shader program into memory
-    setupBuffers();
     setupScene();
 
     // needed to connect our 3D Object Library to our shader
