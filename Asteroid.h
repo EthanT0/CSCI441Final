@@ -54,6 +54,7 @@ public:
     glm::vec3 translationVector;
     glm::vec3 rotationAxis;
     glm::vec3 scaleVector;
+    glm::vec3 getPosition();
     void draw(glm::mat4 viewMtx, glm::mat4 projMtx, glm::vec3 translation, float rotAngle);
 
 

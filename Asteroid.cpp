@@ -109,3 +109,9 @@ void Asteroid::draw(glm::mat4 viewMtx, glm::mat4 projMtx, glm::vec3 translation,
     glBindVertexArray( asteroidVAO );
     glDrawElements( GL_TRIANGLE_STRIP, 24, GL_UNSIGNED_SHORT, (void*)0 );
 }
+
+glm::vec3 Asteroid::getPosition() {
+
+    return translationVector;
+
+}

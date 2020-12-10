@@ -20,6 +20,9 @@
 
 #include "kirb.h"
 #include "Asteroid.h"
+#include "AsteroidSystem.h"
+
+#include "ParticleSystem.h"
 
 #include "Ship.h"
 #include "Skybox.h"
@@ -72,6 +75,25 @@ kirb kirbcopter;
 Ship spaceship;
 Skybox skybox;
 Asteroid asteroid1;
+ParticleSystem particleSystem;
+
+AsteroidSystem asteroidSystem;
+
+float sparkRenderTime = -3.0f;
+
+GLuint billboardTexHandle;
+
+CSCI441::ShaderProgram *billboardShaderProgram = nullptr;
+struct BillboardShaderProgramUniforms {
+    GLint mvMatrix;                     // the ModelView Matrix to apply
+    GLint projMatrix;                   // the Projection Matrix to apply
+    GLint image;                        // the texture to bind
+    GLint skyColor;                        // the texture to bind
+
+} billboardShaderProgramUniforms;
+struct BillboardShaderProgramAttributes {
+    GLint vPos;                         // the vertex position
+} billboardShaderProgramAttributes;
 
 
 CSCI441::ShaderProgram *lightingShader = nullptr;   // the wrapper for our shader program
@@ -96,6 +118,7 @@ struct LightingShaderAttributes {       // stores the locations of all of our sh
 
 char* skyboxPathways[] = {"data/right.png", "data/left.png", "data/up.png", "data/down.png", "data/front.png", "data/back.png"};
 char* shipTexturePathway = "data/ship.png";
+char* billboardTexPath = "data/spark.jpg";
 
 //*************************************************************************************
 //
@@ -294,8 +317,13 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
     lightingShader->useProgram();
     lastTime = glfwGetTime();
     kirbcopter.draw(viewMtx, projMtx, glm::mat4(1));
+    asteroidSystem.draw(viewMtx, projMtx);
 
-    asteroid1.draw(viewMtx, projMtx, glm::vec3(10, 10, 10), asteroid1.rotationAngle+0.01 );
+    billboardShaderProgram->useProgram();
+    glBindTexture(GL_TEXTURE_2D, billboardTexHandle);
+    particleSystem.draw(viewMtx, projMtx, Camera.eyePos, Camera.camDir);
+
+//    asteroid1.draw(viewMtx, projMtx, glm::vec3(10, 10, 10), asteroid1.rotationAngle+0.01 );
 
 }
 
@@ -368,6 +396,30 @@ void updateScene() {
     }
     kirbcopter.heightmapCollision(0);
     kirbcopter.boundaryCollision(glm::vec3(-100, -100, -100), glm::vec3(100, 100, 100));
+
+    if (sparkRenderTime < -0.0f) {
+        particleSystem.reset();
+    } else if (sparkRenderTime < 3.01f) {
+        sparkRenderTime += deltaTime;
+    }
+
+    if (sparkRenderTime < 3.0f) {
+    } else {
+        sparkRenderTime = -1.0f;
+    }
+
+    // TODO: Check all asteroids for collisions with projectiles
+
+    bool particleCollision = false; // Set to true if there was a collision
+
+    Asteroid temp = asteroidSystem.asteroids[0]; // Change asteroid with collided asteroid
+
+    if (particleCollision) { // Place particle system and collided asteroid and draw for 3 seconds
+        sparkRenderTime = 0;
+        particleSystem = ParticleSystem(temp.getPosition(), 100, billboardShaderProgramAttributes.vPos, billboardTexHandle, billboardShaderProgramUniforms.projMatrix, billboardShaderProgramUniforms.mvMatrix);
+        particleSystem.update(deltaTime, temp.getPosition(), glm::vec3(20,20,20));
+    }
+
 }
 
 //*************************************************************************************
@@ -479,14 +531,24 @@ void setupShaders() {
     lightingShaderAttributes.vPos           = lightingShader->getAttributeLocation("vPos");
     lightingShaderAttributes.vNormal        = lightingShader->getAttributeLocation("vNormal");
 
+    billboardShaderProgram = new CSCI441::ShaderProgram( "shaders/billboardQuadShader.v.glsl", "shaders/billboardQuadShader.g.glsl", "shaders/billboardQuadShader.f.glsl" );
+    billboardShaderProgramUniforms.mvMatrix            = billboardShaderProgram->getUniformLocation( "mvMatrix");
+    billboardShaderProgramUniforms.projMatrix          = billboardShaderProgram->getUniformLocation( "projMatrix");
+    billboardShaderProgramUniforms.image               = billboardShaderProgram->getUniformLocation( "image");
+    billboardShaderProgramUniforms.skyColor            = billboardShaderProgram->getUniformLocation( "skyColor");
+
+    billboardShaderProgramAttributes.vPos              = billboardShaderProgram->getAttributeLocation( "vPos");
+
 
     skybox = Skybox(skyboxPathways);
     spaceship = Ship(shipTexturePathway);
-    asteroid1 = Asteroid("textures/asteroid.jpg", glm::vec3(10, 10, 10), glm::vec3(1, 1, 1), glm::vec3(10, 10, 10));
-    // TODO: make function to randomly spawn and move these
+    asteroidSystem = AsteroidSystem();
+
+//    asteroid1 = Asteroid("textures/asteroid.jpg", glm::vec3(10, 10, 10), glm::vec3(1, 1, 1), glm::vec3(10, 10, 10));
 
     //updateCameraDirection();
 }
+
 
 // setupScene() /////////////////////////////////////////////////////////////////
 //
@@ -497,7 +559,6 @@ void setupShaders() {
 void setupScene() {
 
     setupSkybox();
-
 
     leftMouseDown = false;
     mousePosition = glm::vec2(-9999.0f, -9999.0f);
@@ -518,6 +579,10 @@ void setupScene() {
     glUniform3fv(lightingShaderUniforms.lightDirection, 1, &lightDirection[0]);
     glUniform3fv(lightingShaderUniforms.lightColor, 1, &lightColor[0]);
 
+    billboardShaderProgram->useProgram();
+    glUniform1i(billboardShaderProgramUniforms.image, 0);
+    glUniform3fv(billboardShaderProgramUniforms.skyColor, 1, &skyColor[0]);
+
     glm::vec3 kirbLightColor = 5.0f * glm::vec3(1.5, 0.25, 0.35);
     glm::vec3 kirbPos = kirbcopter.getPosition();
     glUniform3fv(lightingShaderUniforms.pointLight4Color, 1, &kirbLightColor[0]);
@@ -525,6 +590,31 @@ void setupScene() {
 }
 
 
+void setupTextures(){
+    glGenTextures(1, &billboardTexHandle);
+    glBindTexture(GL_TEXTURE_2D, billboardTexHandle);
+
+    int width, height, channels;
+    unsigned char *data = stbi_load( billboardTexPath, &width, &height, &channels, 0);
+    if(data) {
+        fprintf(stdout, "Loaded billboard texture [%s]\n", billboardTexPath);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data
+        );
+    }
+    else {
+        fprintf(stdout, "texture failed to load [%s]\n", billboardTexPath );
+    }
+    stbi_image_free(data);
+
+
+}
 
 
 ///*************************************************************************************
@@ -544,11 +634,13 @@ int main() {
     CSCI441::OpenGLUtils::printOpenGLInfo();
 
     setupShaders();                                         // load our shader program into memory
+    setupTextures();
     setupScene();
 
     // needed to connect our 3D Object Library to our shader
     CSCI441::setVertexAttributeLocations( lightingShaderAttributes.vPos,  lightingShaderAttributes.vNormal);
 
+    updateScene();
 
     //  This is our draw loop - all rendering is done here.  We use a loop to keep the window open
     //	until the user decides to close the window and quit the program.  Without a loop, the
