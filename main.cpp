@@ -116,12 +116,11 @@ void setupSkybox()
 ////////////////////////////////////////////////////////////////////////////////
 void updateCameraDirection() {
     // ensure phi doesn't flip our camera
-    if (Camera.cameraAngles.y <= 0) Camera.cameraAngles.y = 0.0f + 0.001f;
-    if (Camera.cameraAngles.y >= M_PI) Camera.cameraAngles.y = M_PI - 0.001f;
-
-//    if (Camera.cameraAngles.x <= 0) Camera.cameraAngles.x = 2 * M_PI - 0.001f;
-//    if (Camera.cameraAngles.x >= 2 * M_PI) Camera.cameraAngles.x = 0.0f + 0.001f;
-
+    if(freeCam) {
+        if (Camera.cameraAngles.y <= 0) Camera.cameraAngles.y = 0.0f + 0.001f;
+        if (Camera.cameraAngles.y >= M_PI) Camera.cameraAngles.y = M_PI - 0.001f;
+    }
+    
     if(arcballCam) {
         // do not let our camera get too close or too far away
         if (Camera.cameraAngles.z <= 2.0f) Camera.cameraAngles.z = 2.0f;
@@ -203,6 +202,7 @@ static void keyboard_callback( GLFWwindow *window, int key, int scancode, int ac
                 freeCam = false;
                 arcballCam = true;
                 // TODO RESET ARCBALL with respect to ship pos
+                // ship is initially draw downwards for some reason
                 Camera.cameraSpeed = glm::vec2(0.01f, 0.02f);
                 Camera.cameraAngles = glm::vec3(-M_PI/2.0f, M_PI/4.6f, 20.0f);
                 updateCameraDirection();
@@ -510,7 +510,8 @@ void setupScene() {
     leftMouseDown = false;
     mousePosition = glm::vec2(-9999.0f, -9999.0f);
 
-    // give the camera a scenic starting point. //TODO ADJUST STARTING DIRECTION/EYEPOS
+    // give the camera a scenic starting point.
+    // ADJUST STARTING DIRECTION/EYEPOS HERE
     Camera.eyePos = glm::vec3(10.0f, 10.0f, 5.0f);
     Camera.cameraAngles = glm::vec3(M_PI/2.0f, -M_PI/1.45f, 20.0f);
     Camera.cameraSpeed = glm::vec2(0.25f, 0.02f);
@@ -582,9 +583,7 @@ int main() {
         glViewport( 0, 0, framebufferWidth, framebufferHeight );
 
         // set up our look at matrix to position our camera
-//        glm::vec3 cameraWorldPos = spaceship.getPosition() + cameraRadius * cameraDirection;
-//        glm::mat4 viewMtx = glm::lookAt( cameraWorldPos, spaceship.getPosition(), glm::vec3(0, 1, 0));
-        glm::mat4 viewMtx = glm::lookAt(Camera.eyePos, Camera.lookAtPoint, glm::vec3(0, 1, 0)); //TODO
+        glm::mat4 viewMtx = glm::lookAt(Camera.eyePos, Camera.lookAtPoint, glm::vec3(0, 1, 0));
 
         renderScene( viewMtx, projMtx);					// draw everything to the window
 
