@@ -41,6 +41,14 @@ void Ship::rotate(GLfloat xInput, GLfloat yInput, GLfloat timeStep) {
     pitch += yInput * timeStep;
 }
 
+void Ship::rotatex(GLfloat xInput, GLfloat timeStep) {
+    pitch = xInput * timeStep;
+}
+
+void Ship::rotatey(GLfloat yInput, GLfloat timeStep) {
+    yaw = yInput * timeStep;
+}
+
 void Ship::draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 rotationMtx){
     shipShader->useProgram();
 

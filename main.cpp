@@ -34,9 +34,24 @@ const GLint WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
 GLboolean leftMouseDown;    	 		// status ff the left mouse button is pressed
 glm::vec2 mousePosition;				// last known X and Y of the mouse
 
-glm::vec3 cameraDirection;
-GLfloat cameraSensivity = 0.02f;
-GLfloat cameraTheta, cameraPhi, cameraRadius = 20;
+//glm::vec3 cameraDirection;
+//GLfloat cameraSensivity = 0.02f;
+//GLfloat cameraTheta, cameraPhi, cameraRadius = 20;
+
+// keep track of all our camera information
+struct CameraParameters {
+    glm::vec3 cameraAngles;             // cameraAngles --> x = theta, y = phi, z = radius
+    glm::vec3 camDir;                   // direction to the camera
+    glm::vec3 eyePos;                   // camera position
+    glm::vec2 cameraSpeed;              // cameraSpeed --> FREECAM: x = forward/backward delta, y = rotational delta, ARCBALL: x = zoom, y = rotational delta
+    glm::vec3 lookAtPoint;              // location of our object of interest to view
+    glm::vec3 upVector;                 // the upVector of our camera
+    //GLfloat camRadius;
+} Camera;
+
+//Bools for different cam types
+bool arcballCam = false;
+bool freeCam = true;
 
 GLfloat lastTime;
 GLfloat deltaTime;                      // Frametime number, updated every frame
@@ -100,7 +115,33 @@ void setupSkybox()
 //
 ////////////////////////////////////////////////////////////////////////////////
 void updateCameraDirection() {
-    cameraDirection = glm::vec3(cos(cameraTheta) * sin(cameraPhi), cos(cameraPhi), sin(cameraTheta) * sin(cameraPhi));
+    // ensure phi doesn't flip our camera
+    if (Camera.cameraAngles.y <= 0) Camera.cameraAngles.y = 0.0f + 0.001f;
+    if (Camera.cameraAngles.y >= M_PI) Camera.cameraAngles.y = M_PI - 0.001f;
+
+//    if (Camera.cameraAngles.x <= 0) Camera.cameraAngles.x = 2 * M_PI - 0.001f;
+//    if (Camera.cameraAngles.x >= 2 * M_PI) Camera.cameraAngles.x = 0.0f + 0.001f;
+
+    if(arcballCam) {
+        // do not let our camera get too close or too far away
+        if (Camera.cameraAngles.z <= 2.0f) Camera.cameraAngles.z = 2.0f;
+        if (Camera.cameraAngles.z >= 30.0f) Camera.cameraAngles.z = 30.0f;
+    }
+
+    // update the new direction to the camera
+    Camera.camDir.x = Camera.cameraAngles.z * sinf( Camera.cameraAngles.x ) * sinf( Camera.cameraAngles.y );
+    Camera.camDir.y = Camera.cameraAngles.z * -cosf( Camera.cameraAngles.y );
+    Camera.camDir.z = Camera.cameraAngles.z * -cosf( Camera.cameraAngles.x ) * sinf( Camera.cameraAngles.y );
+
+    // normalize this direction
+    Camera.camDir = glm::normalize(Camera.camDir);
+
+    if(arcballCam){
+        Camera.lookAtPoint = spaceship.getPosition();
+        Camera.eyePos = Camera.lookAtPoint + Camera.camDir * Camera.cameraAngles.z;
+    } else if (freeCam) {
+        Camera.lookAtPoint = Camera.eyePos + Camera.camDir;
+    }
 }
 
 // computeAndSendMatrixUniforms() ///////////////////////////////////////////////
@@ -151,9 +192,20 @@ static void keyboard_callback( GLFWwindow *window, int key, int scancode, int ac
                 break;
             case GLFW_KEY_1:
                 showCage = !showCage;
+                freeCam = true;
+                arcballCam = false;
+                Camera.cameraSpeed = glm::vec2(0.25f, 0.02f);
+                Camera.cameraAngles = glm::vec3(M_PI/2.0f, -M_PI/2.0f, 20.0f);
+                updateCameraDirection();
                 break;
             case GLFW_KEY_2:
                 showCurve = !showCurve;
+                freeCam = false;
+                arcballCam = true;
+                // TODO RESET ARCBALL with respect to ship pos
+                Camera.cameraSpeed = glm::vec2(0.01f, 0.02f);
+                Camera.cameraAngles = glm::vec3(-M_PI/2.0f, M_PI/4.6f, 20.0f);
+                updateCameraDirection();
                 break;
             default:
                 break;
@@ -183,23 +235,24 @@ static void cursor_callback( GLFWwindow* window, double xPos, double yPos) {
     if( xPos > 0 && xPos < WINDOW_WIDTH ) {
         if( yPos > 0 && yPos < WINDOW_HEIGHT ) {
             // active motion
-            if( leftMouseDown ) {
+            if( leftMouseDown && arcballCam) {
                 // ensure we've moved at least one pixel to register a movement from the click
                 if( !((mousePosition.x - -9999.0f) < 0.001f) && controlKey != GLFW_PRESS) {
-                    cameraTheta += (xPos - mousePosition.x) * cameraSensivity;
-                    cameraPhi -= (yPos - mousePosition.y) * cameraSensivity;
+                    Camera.cameraAngles.x += (xPos - mousePosition.x) * Camera.cameraSpeed.x;
+                    Camera.cameraAngles.y += (mousePosition.y - yPos) * Camera.cameraSpeed.x;
+                    updateCameraDirection();
                 }
                 // If the mouse is pressed and left control is pressed, zoom the camera with mouse cursor y position
                 if(controlKey == GLFW_PRESS && !((mousePosition.x - -9999.0f) < 0.001f)) {
-                    cameraRadius += (yPos - mousePosition.y) * cameraSensivity;
+                    Camera.cameraAngles.z += (yPos - mousePosition.y) * Camera.cameraSpeed.x;
                     updateCameraDirection();
                 }
             }
         }
     }
     mousePosition = glm::vec2( xPos, yPos);
-    cameraPhi = glm::clamp(cameraPhi, 0.001f, 3.1415f);
-    updateCameraDirection();
+//    cameraPhi = glm::clamp(cameraPhi, 0.001f, 3.1415f);
+//    updateCameraDirection();
 }
 
 // mouse_button_callback() /////////////////////////////////////////////////////
@@ -231,8 +284,9 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
     glm::mat4 rotationMtx = projMtx * glm::mat4(glm::mat3(viewMtx));
     skybox.draw(rotationMtx);
 
-    spaceship.draw(glm::mat4(1), viewMtx, projMtx);
-
+    glm::mat4 modelMtx(1.0f);
+    if(freeCam) modelMtx = glm::translate(modelMtx, Camera.eyePos + Camera.camDir * Camera.cameraAngles.z);
+    spaceship.draw(modelMtx, viewMtx, projMtx);
 
     lightingShader->useProgram();
     lastTime = glfwGetTime();
@@ -251,29 +305,62 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
 ////////////////////////////////////////////////////////////////////////////////
 void updateScene() {
     GLfloat horizontalInput = 0, verticalInput = 0, flyInput = 0;
+    deltaTime = glfwGetTime() - lastTime;
     // turn right
-    if( keys[GLFW_KEY_D] ) {
+    if (keys[GLFW_KEY_D]) {
         horizontalInput += 1;
+        if(freeCam) {
+            Camera.cameraAngles.x += Camera.cameraSpeed.y;
+            updateCameraDirection();
+        }
     }
     // turn left
-    if( keys[GLFW_KEY_A] ) {
+    if (keys[GLFW_KEY_A]) {
         horizontalInput -= 1;
+        if(freeCam) {
+            Camera.cameraAngles.x -= Camera.cameraSpeed.y;
+            updateCameraDirection();
+        }
     }
     // pitch up
-    if( keys[GLFW_KEY_W] ) {
+    if (keys[GLFW_KEY_W]) {
         verticalInput += 1;
+        if(freeCam) {
+            Camera.cameraAngles.y += Camera.cameraSpeed.y;
+            updateCameraDirection();
+        }
     }
     // pitch down
-    if( keys[GLFW_KEY_S] ) {
+    if (keys[GLFW_KEY_S]) {
         verticalInput -= 1;
+        if(freeCam) {
+            Camera.cameraAngles.y -= Camera.cameraSpeed.y;
+            updateCameraDirection();
+        }
     }
     // go forward
-    if( keys[GLFW_KEY_SPACE] ) {
+    if (keys[GLFW_KEY_SPACE]) {
         flyInput += 1;
+        if(freeCam) {
+            Camera.eyePos += Camera.camDir * Camera.cameraSpeed.x;
+            updateCameraDirection();
+        }
+    }
+    // go backward
+    if (keys[GLFW_KEY_X]) {
+        if(freeCam) {
+            Camera.eyePos -= Camera.camDir * Camera.cameraSpeed.x;
+            updateCameraDirection();
+        }
     }
 
+
     deltaTime = glfwGetTime() - lastTime;
-    spaceship.rotate(verticalInput, horizontalInput, deltaTime);
+    if(arcballCam) spaceship.rotate(verticalInput, horizontalInput, deltaTime);
+    if(freeCam) {
+        spaceship.rotatex(-Camera.cameraAngles.x + M_PI/2.0f, 1.0f);
+        spaceship.rotatey(Camera.cameraAngles.y - M_PI/3.8f, 1.0f); // ADJUST DENOMINATOR FOR starting ship angle
+    }
     kirbcopter.heightmapCollision(0);
     kirbcopter.boundaryCollision(glm::vec3(-100, -100, -100), glm::vec3(100, 100, 100));
 }
@@ -406,7 +493,7 @@ void setupBuffers() {
     skybox = Skybox(skyboxPathways);
     spaceship = Ship(shipTexturePathway);
 
-    updateCameraDirection();
+    //updateCameraDirection();
 }
 
 // setupScene() /////////////////////////////////////////////////////////////////
@@ -422,6 +509,11 @@ void setupScene() {
 
     leftMouseDown = false;
     mousePosition = glm::vec2(-9999.0f, -9999.0f);
+
+    // give the camera a scenic starting point. //TODO ADJUST STARTING DIRECTION/EYEPOS
+    Camera.eyePos = glm::vec3(10.0f, 10.0f, 5.0f);
+    Camera.cameraAngles = glm::vec3(M_PI/2.0f, -M_PI/1.45f, 20.0f);
+    Camera.cameraSpeed = glm::vec2(0.25f, 0.02f);
     updateCameraDirection();
 
     lightingShader->useProgram();               // use our lighting shader program so when
@@ -490,8 +582,9 @@ int main() {
         glViewport( 0, 0, framebufferWidth, framebufferHeight );
 
         // set up our look at matrix to position our camera
-        glm::vec3 cameraWorldPos = spaceship.getPosition() + cameraRadius * cameraDirection;
-        glm::mat4 viewMtx = glm::lookAt( cameraWorldPos, spaceship.getPosition(), glm::vec3(0, 1, 0));
+//        glm::vec3 cameraWorldPos = spaceship.getPosition() + cameraRadius * cameraDirection;
+//        glm::mat4 viewMtx = glm::lookAt( cameraWorldPos, spaceship.getPosition(), glm::vec3(0, 1, 0));
+        glm::mat4 viewMtx = glm::lookAt(Camera.eyePos, Camera.lookAtPoint, glm::vec3(0, 1, 0)); //TODO
 
         renderScene( viewMtx, projMtx);					// draw everything to the window
 

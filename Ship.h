@@ -50,6 +50,10 @@ public:
 
     void rotate(GLfloat xInput, GLfloat yInput, GLfloat timeStep);
 
+    void rotatex(GLfloat xInput, GLfloat timeStep);
+
+    void rotatey(GLfloat yInput, GLfloat timeStep);
+
     void draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 rotationMtx);
 
     glm::vec3 getPosition();
