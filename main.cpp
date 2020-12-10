@@ -116,11 +116,10 @@ void setupSkybox()
 ////////////////////////////////////////////////////////////////////////////////
 void updateCameraDirection() {
     // ensure phi doesn't flip our camera
-    if(freeCam) {
-        if (Camera.cameraAngles.y <= 0) Camera.cameraAngles.y = 0.0f + 0.001f;
-        if (Camera.cameraAngles.y >= M_PI) Camera.cameraAngles.y = M_PI - 0.001f;
-    }
-    
+    if (Camera.cameraAngles.y <= 0) Camera.cameraAngles.y = 0.0f + 0.001f;
+    if (Camera.cameraAngles.y >= M_PI) Camera.cameraAngles.y = M_PI - 0.001f;
+
+
     if(arcballCam) {
         // do not let our camera get too close or too far away
         if (Camera.cameraAngles.z <= 2.0f) Camera.cameraAngles.z = 2.0f;
@@ -203,7 +202,7 @@ static void keyboard_callback( GLFWwindow *window, int key, int scancode, int ac
                 arcballCam = true;
                 // TODO RESET ARCBALL with respect to ship pos
                 // ship is initially draw downwards for some reason
-                Camera.cameraSpeed = glm::vec2(0.01f, 0.02f);
+                Camera.cameraSpeed = glm::vec2(0.01f, 0.03f);
                 Camera.cameraAngles = glm::vec3(-M_PI/2.0f, M_PI/4.6f, 20.0f);
                 updateCameraDirection();
                 break;
@@ -308,7 +307,7 @@ void updateScene() {
     deltaTime = glfwGetTime() - lastTime;
     // turn right
     if (keys[GLFW_KEY_D]) {
-        horizontalInput += 1;
+        horizontalInput += 2;
         if(freeCam) {
             Camera.cameraAngles.x += Camera.cameraSpeed.y;
             updateCameraDirection();
@@ -316,7 +315,7 @@ void updateScene() {
     }
     // turn left
     if (keys[GLFW_KEY_A]) {
-        horizontalInput -= 1;
+        horizontalInput -= 2;
         if(freeCam) {
             Camera.cameraAngles.x -= Camera.cameraSpeed.y;
             updateCameraDirection();
@@ -324,7 +323,7 @@ void updateScene() {
     }
     // pitch up
     if (keys[GLFW_KEY_W]) {
-        verticalInput += 1;
+        verticalInput += 2;
         if(freeCam) {
             Camera.cameraAngles.y += Camera.cameraSpeed.y;
             updateCameraDirection();
@@ -332,7 +331,7 @@ void updateScene() {
     }
     // pitch down
     if (keys[GLFW_KEY_S]) {
-        verticalInput -= 1;
+        verticalInput -= 2;
         if(freeCam) {
             Camera.cameraAngles.y -= Camera.cameraSpeed.y;
             updateCameraDirection();
