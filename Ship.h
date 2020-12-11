@@ -18,9 +18,32 @@
 #include <glm/gtc/noise.hpp>
 #include <CSCI441/ShaderProgram.hpp>
 
+struct shipPointLight{              // stores point light information
+    GLint position;
+    GLint color;
+};
+
+struct shipDirectionalLight{
+    GLint direction;
+    GLint color;
+};
+
+struct shipSpotLight{
+    GLint position;
+    GLint direction;
+    GLint color;
+    GLint cutOff;
+    GLint outerCutOff;
+};
+
 struct shipShaderUniforms {         // stores the locations of all of our shader uniforms
     GLint mvpMatrix;
+    GLint modelMatrix;
+    GLint normalMatrix;
+    GLint viewDir;
     GLint shipTex;                 // Skybox texture sampler
+    shipPointLight pointLights[2];
+    shipDirectionalLight directionalLights[3];
 };
 
 struct shipShaderAttributes {       // stores the locations of all of our shader attributes
@@ -57,6 +80,8 @@ public:
     void draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 rotationMtx);
 
     glm::vec3 getPosition();
+
+    void sendViewDirection(glm::vec3 &camDir);
 };
 
 

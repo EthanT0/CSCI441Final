@@ -11,5 +11,5 @@ uniform sampler2D shipTex;
 
 void main()
 {
-    FragColor = vec4(light * texture(shipTex, uv).rgb, 1);
+    FragColor = vec4(light * texture(shipTex, uv).rgb + texture(shipTex, uv).rgb/2.8, 1);
 }

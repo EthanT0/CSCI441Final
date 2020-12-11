@@ -166,6 +166,8 @@ void updateCameraDirection() {
     } else if (freeCam) {
         Camera.lookAtPoint = Camera.eyePos + Camera.camDir;
     }
+
+    spaceship.sendViewDirection(Camera.camDir);
 }
 
 
