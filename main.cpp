@@ -542,7 +542,7 @@ void setupShaders() {
 
     skybox = Skybox(skyboxPathways);
     spaceship = Ship(shipTexturePathway);
-    asteroidSystem = AsteroidSystem();
+    asteroidSystem = AsteroidSystem("textures/asteroid.jpg");
 
 //    asteroid1 = Asteroid("textures/asteroid.jpg", glm::vec3(10, 10, 10), glm::vec3(1, 1, 1), glm::vec3(10, 10, 10));
 
