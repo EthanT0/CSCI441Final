@@ -21,7 +21,7 @@ glm::vec3 Particle::update(GLfloat timeStep, glm::vec3 wrapPosition, glm::vec3 w
 
     aliveTime += timeStep;
 
-    position += (velocity * 0.01f) * aliveTime;
+    return position += (velocity * 0.01f) * aliveTime;
 
 }
 

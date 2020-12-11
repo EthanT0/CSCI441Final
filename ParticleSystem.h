@@ -5,19 +5,15 @@
 #ifndef A5_PARTICLESYSTEM_H
 #define A5_PARTICLESYSTEM_H
 
-#include <CSCI441/ShaderUtils.hpp>
-#include <CSCI441/objects.hpp>
 
-#include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/noise.hpp>
+
 
 #include <vector>
-#include<bits/stdc++.h>
+#include <algorithm>
 
 #include "Particle.h"
 
-#include <iostream>
 
 
 class ParticleSystem {

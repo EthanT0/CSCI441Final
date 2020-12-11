@@ -52,7 +52,7 @@ ParticleSystem::ParticleSystem(glm::vec3 originPoint, GLint maxParticles, GLint 
 void ParticleSystem::draw(glm::mat4 viewMat, glm::mat4 projMat, glm::vec3 cameraPos, glm::vec3 lookingVector){
 
     //model matrix is origin offset
-    glm::mat4 modelMat = glm::translate(glm::mat4(1), origin);
+    glm::mat4 modelMat = glm::translate(glm::mat4(1.0f), origin);
 
     glm::mat4 mvMat = viewMat * modelMat;
 
@@ -64,7 +64,7 @@ void ParticleSystem::draw(glm::mat4 viewMat, glm::mat4 projMat, glm::vec3 camera
 
     //sort pairs of IBO and distances by distance
     for (int i=0; i<maxParticles; i++) iboDistances.push_back( std::make_pair(particles[i].distanceToCamera(modelMat, cameraPos, lookingVector), i) );
-    sort(iboDistances.rbegin(), iboDistances.rend());
+    std::sort(iboDistances.rbegin(), iboDistances.rend());
 
     //create a new vector of the IBOs
     std::vector<GLushort> ibos;
