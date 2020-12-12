@@ -7,7 +7,7 @@ Not Evan Vaughan - Evan Vaughan - evaughan@mymail.mines.edu
 --------------------------------------------------------------------------
 
 Description:
-This program features a 3-dimensional revamp of the well known 1979 Atari game, Ateroids.
+This program features a 3-dimensional revamp of the well known 1979 Atari game, Ateroids. The objective is to move through space while avoiding asteroids. Furtunately, you're also equipped with a massive cannon that can destroy these asteroids with a well-aimed shot. Survive until all the asteroids have passed, and you've won the game!
 
 Usage:
 The program starts in free cam mode. Use the ASDW keys to rotate the ship
