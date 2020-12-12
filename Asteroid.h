@@ -27,7 +27,6 @@
 
 
 class Asteroid {
-    GLuint asteroidVAO, asteroidVBOs[2];
 
 public:
     Asteroid();
@@ -37,7 +36,8 @@ public:
     glm::vec3 rotationAxis;
     glm::vec3 scaleVector;
     glm::vec3 getPosition();
-    glm::mat4 draw(glm::mat4 viewMtx, glm::mat4 projMtx, glm::vec3 translation, float rotAngle);
+
+    glm::mat4 getTransformation();
 
 
 };

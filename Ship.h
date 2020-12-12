@@ -24,6 +24,7 @@ struct shipPointLight{              // stores point light information
 };
 
 struct shipDirectionalLight{
+    GLint position;
     GLint direction;
     GLint color;
 };
@@ -52,21 +53,41 @@ struct shipShaderAttributes {       // stores the locations of all of our shader
     GLint vUV;
 };
 
+struct engineShaderUniforms {         // stores the locations of all of our shader uniforms
+    GLint mvpMatrix;
+    GLint time;
+};
+
+struct engineShaderAttributes {       // stores the locations of all of our shader attributes
+    GLint vPos;
+};
+
 class Ship {
+
+    glm::vec3 lightPositions[3];
+    glm::vec3 lightColors[3];
+    glm::vec3 directionalLight;
 
     GLfloat pitch, yaw;
     //glm::vec3 position;
 
+    glm::mat4 engineTransforms[2];
+
     GLuint shipTextureHandle;
 
     CSCI441::ModelLoader* model = nullptr;
+    CSCI441::ModelLoader* engineModel = nullptr;
 
     CSCI441::ShaderProgram *shipShader = nullptr;   // the wrapper for our shader program
+    CSCI441::ShaderProgram *engineShader = nullptr;   // the wrapper for our shader program
 
     struct shipShaderUniforms shipShaderUniforms;
     struct shipShaderAttributes shipShaderAttributes;
 
+    struct engineShaderUniforms engineShaderUniforms;
+    struct engineShaderAttributes engineShaderAttributes;
 public:
+
     Ship();
 
     Ship(char* ShipTexturePath);
@@ -77,7 +98,9 @@ public:
 
     void rotatey(GLfloat yInput, GLfloat timeStep);
 
-    void draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 rotationMtx);
+    void draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 rotationMtx, GLfloat time = 0.0f);
+
+    void sendLightingData(GLint pointLight1Location, GLint pointLight1Color, GLint pointLight2Location, GLint pointLight2Color, GLint directionalLightPosition, GLint directionalLightDirection, GLint directionalLightColor );
 
     glm::vec3 getPosition();
 

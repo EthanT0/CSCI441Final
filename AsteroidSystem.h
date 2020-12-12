@@ -7,30 +7,38 @@
 
 #include "Asteroid.h"
 #include "vector"
+#include "Ship.h"
 
 class AsteroidSystem {
     struct AsteroidShaderProgramUniforms {
         GLint mvpMatrix;                    // the MVP Matrix to apply
-        GLint textureMap;
+        GLint modelMatrix;
+        GLint normalMatrix;
+        GLint asteroidTex;
+        GLint viewDir;
+        shipPointLight pointLights[2];
+        shipDirectionalLight directionalLights[3];
 
     };
     struct AsteroidShaderProgramAttributes {
         GLint vPos;                         // position of our vertex
-        GLint tPosition;
-
+        GLint vUV;
+        GLint vNormal;
     };
     GLuint asteroidTextureHandle;
     CSCI441::ShaderProgram* asteroidShaderProgram = nullptr;
     const char* textureFile;
-    GLuint asteroidVAO, asteroidVBOs[2];
+    GLuint asteroidVAO, asteroidVBO, asteroidIBO;
+    GLint asteroidVertexCount;
 
     struct AsteroidShaderProgramUniforms asteroidShaderProgramUniforms;
     struct AsteroidShaderProgramAttributes asteroidShaderProgramAttributes;
 
 
 public:
+    void setLightingParameters(Ship &ship, glm::vec3 &camDir);
+
     std::vector<Asteroid> asteroids;
-    std::vector<glm::vec3> translations;
 
     AsteroidSystem();
     AsteroidSystem(char* texturePath);

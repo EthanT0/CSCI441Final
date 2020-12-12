@@ -14,13 +14,28 @@ AsteroidSystem::AsteroidSystem(char* texturePath) {
     asteroidTextureHandle = 0;
 
     asteroidShaderProgram = new CSCI441::ShaderProgram( "shaders/asteroid.v.glsl", "shaders/asteroid.f.glsl" );
-    asteroidShaderProgramUniforms.mvpMatrix   = asteroidShaderProgram->getUniformLocation("mvpMatrix");
-    asteroidShaderProgramAttributes.vPos      = asteroidShaderProgram->getAttributeLocation("vPos");
-    asteroidShaderProgramUniforms.textureMap = asteroidShaderProgram->getUniformLocation("textureMap");
-    asteroidShaderProgramAttributes.tPosition = asteroidShaderProgram->getAttributeLocation("tPosition");
+    asteroidShaderProgramUniforms.mvpMatrix      = asteroidShaderProgram->getUniformLocation("mvpMatrix");
+    asteroidShaderProgramUniforms.modelMatrix    = asteroidShaderProgram->getUniformLocation("modelMatrix");
+    asteroidShaderProgramUniforms.normalMatrix   = asteroidShaderProgram->getUniformLocation("normalMatrix");
+    asteroidShaderProgramUniforms.viewDir        = asteroidShaderProgram->getUniformLocation("viewDir");
+    asteroidShaderProgramUniforms.asteroidTex        = asteroidShaderProgram->getUniformLocation("asteroidTex");
+    // Point lights uniforms
+    asteroidShaderProgramUniforms.pointLights[0].position     = asteroidShaderProgram->getUniformLocation("pointLights[0].position");
+    asteroidShaderProgramUniforms.pointLights[0].color        = asteroidShaderProgram->getUniformLocation("pointLights[0].color");
+    asteroidShaderProgramUniforms.pointLights[1].position     = asteroidShaderProgram->getUniformLocation("pointLights[1].position");
+    asteroidShaderProgramUniforms.pointLights[1].color        = asteroidShaderProgram->getUniformLocation("pointLights[1].color");
+    // Directional lights uniforms
+    asteroidShaderProgramUniforms.directionalLights[0].position         = asteroidShaderProgram->getUniformLocation("directionalLights.position");
+    asteroidShaderProgramUniforms.directionalLights[0].direction     = asteroidShaderProgram->getUniformLocation("directionalLights.direction");
+    asteroidShaderProgramUniforms.directionalLights[0].color         = asteroidShaderProgram->getUniformLocation("directionalLights.color");
+
+    asteroidShaderProgramAttributes.vPos         = asteroidShaderProgram->getAttributeLocation("vPos");
+    asteroidShaderProgramAttributes.vNormal      = asteroidShaderProgram->getAttributeLocation("vNormal");
+    asteroidShaderProgramAttributes.vUV          = asteroidShaderProgram->getAttributeLocation("vUV");
+
 
     asteroidShaderProgram->useProgram();                         // set our shader program to be active
-    glUniform1i(asteroidShaderProgramUniforms.textureMap, 0);
+    glUniform1i(asteroidShaderProgramUniforms.asteroidTex, 0);
 
     // load the image data from file to a byte array
     int imageWidth, imageHeight, imageChannels;
@@ -50,8 +65,8 @@ AsteroidSystem::AsteroidSystem(char* texturePath) {
         float s, t;
     };
 
-    const int stacks = 10;
-    const int slices = 10;
+    const int stacks = 64;
+    const int slices = 64;
 
     std::vector<VertexTextured> asteroidVertices;
     std::vector<unsigned short> asteroidIndices;
@@ -72,7 +87,7 @@ AsteroidSystem::AsteroidSystem(char* texturePath) {
             float z = sinf(theta) * sin(phi);
 
             // Push Back Vertex Data
-            asteroidVertices.push_back({x, y, z, 0, 0});
+            asteroidVertices.push_back({x, y, z, U, V});
         }
     }
 
@@ -87,54 +102,53 @@ AsteroidSystem::AsteroidSystem(char* texturePath) {
     }
 
     printf("Number of vertices:%lu ", asteroidVertices.size());
-//    for (int i = 0; i < sizeof(asteroidVertices); i++) {
-//        printf("x: ", asteroidVertices[i].x);
-//        printf("y: ", asteroidVertices[i].y);
-//        printf("z: ", asteroidVertices[i].z);
-//
-//
-//    }
     printf("Number of indices:%lu ", asteroidIndices.size());
-    VertexTextured* v = &asteroidVertices[0];
-    unsigned short* i = &asteroidIndices[0];
 
+    asteroidVertexCount = asteroidIndices.size();
 
-    asteroidShaderProgram->useProgram();
+    glGenVertexArrays(1, &asteroidVAO);
+    glBindVertexArray(asteroidVAO);
 
-    glGenVertexArrays( 1, &asteroidVAO );
-    glBindVertexArray( asteroidVAO );
-
-    glGenBuffers( 2, asteroidVBOs );
-
-    glBindBuffer( GL_ARRAY_BUFFER, asteroidVBOs[0] );
-    glBufferData(GL_ARRAY_BUFFER, sizeof(v), v, GL_STATIC_DRAW );
+    glGenBuffers(1, &asteroidVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, asteroidVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(VertexTextured) * asteroidVertexCount, &asteroidVertices[0], GL_STATIC_DRAW);
 
     glEnableVertexAttribArray( asteroidShaderProgramAttributes.vPos );
-    glVertexAttribPointer( asteroidShaderProgramAttributes.vPos, 3, GL_FLOAT, GL_FALSE, sizeof(VertexTextured), (void*) 0 );
+    glVertexAttribPointer( asteroidShaderProgramAttributes.vPos,
+                           3, //number of elements in the attribute
+                           GL_FLOAT, //data type
+                           GL_FALSE, //do not normalize
+                           sizeof(VertexTextured), //stride
+                           (void*)0); //relative starting address
 
-    glEnableVertexAttribArray( asteroidShaderProgramAttributes.tPosition );
-    glVertexAttribPointer( asteroidShaderProgramAttributes.tPosition, 2, GL_FLOAT, GL_FALSE, sizeof(VertexTextured), (void*)(sizeof(float) * 3) );
+    glEnableVertexAttribArray( asteroidShaderProgramAttributes.vNormal );
+    glVertexAttribPointer( asteroidShaderProgramAttributes.vNormal,
+                           3, //number of elements in the attribute
+                           GL_FLOAT, //data type
+                           GL_FALSE, //do not normalize
+                           sizeof(VertexTextured), //stride
+                           (void*)0); //relative starting address
 
-    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, asteroidVBOs[1] );
-    glBufferData(GL_ARRAY_BUFFER, sizeof(i), i, GL_STATIC_DRAW );
-    CSCI441::setVertexAttributeLocations(asteroidShaderProgramAttributes.vPos,   // vertex position location
-                                         -1,                   // vertex normal location not used, set to -1
-                                         asteroidShaderProgramAttributes.tPosition );
+    glEnableVertexAttribArray(  asteroidShaderProgramAttributes.vUV );
+    glVertexAttribPointer( asteroidShaderProgramAttributes.vUV, // location connection
+                           2, //number of elements in the attribute
+                           GL_FLOAT, //data type
+                           GL_FALSE, //do not normalize
+                           sizeof(VertexTextured), //stride
+                           (void*)(sizeof(float) * 3)); //relative starting address
 
-    fprintf( stdout, "[INFO]: quad read in with VAO %d\n\n", asteroidVAO );
+    glGenBuffers(1, &asteroidIBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asteroidIBO);
 
-    CSCI441::setVertexAttributeLocations(asteroidShaderProgramAttributes.vPos,   // vertex position location
-                                         -1,                   // vertex normal location not used, set to -1
-                                         asteroidShaderProgramAttributes.tPosition );
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLushort) * asteroidVertexCount, &asteroidIndices[0], GL_STATIC_DRAW);
 
-    for (int i = 0; i < 100; i ++) { // Make 100 asteroids
-        Asteroid asteroid = Asteroid(glm::vec3(randNumber1(20), randNumber1(20), randNumber1(20)), // Initial position
+    for (int i = 0; i < 10; i ++) { // Make 100 asteroids
+        Asteroid asteroid = Asteroid(glm::vec3(randNumber1(40), randNumber1(40), randNumber1(40)), // Initial position
                                      glm::vec3(1, 1, 1),  // Axis of rotation
                                      glm::vec3(10, 10, 10)); // Scale
 
 
         asteroids.push_back(asteroid);
-        translations.push_back(glm::vec3(randNumber1(2), randNumber1(2), randNumber1(2))); // Generate random initial translation vector
     }
 
 }
@@ -144,23 +158,31 @@ void AsteroidSystem::draw(glm::mat4 viewMatrix, glm::mat4 projMatrix) {
 
     float angle = 0;
 
-    float translationScalar = 0.01f;
-
     for (int i = 0; i < asteroids.size(); i++) {
 
-        glm::vec3 translation = translations[i] * translationScalar;
+        glm::mat4 modelMatrix = asteroids[i].getTransformation();
+        glm::mat4 mvpMtx = projMatrix * viewMatrix * modelMatrix;
 
-        glm::mat4 mvpMtx = asteroids[i].draw(viewMatrix, projMatrix, translation, angle);
+        glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelMatrix)));
+
         glUniformMatrix4fv(asteroidShaderProgramUniforms.mvpMatrix, 1, GL_FALSE, &mvpMtx[0][0]);
+        glUniformMatrix4fv(asteroidShaderProgramUniforms.modelMatrix, 1, GL_FALSE, &modelMatrix[0][0]);
+        glUniformMatrix3fv(asteroidShaderProgramUniforms.normalMatrix, 1, GL_FALSE, &normalMatrix[0][0]);
 
         glBindTexture(GL_TEXTURE_2D, asteroidTextureHandle);
         glBindVertexArray( asteroidVAO );
-        glDrawElements( GL_TRIANGLE_STRIP, 24, GL_UNSIGNED_SHORT, (void*)0 );
+        glDrawElements( GL_TRIANGLES, asteroidVertexCount, GL_UNSIGNED_SHORT, (void*)0 );
     }
-
 }
 
+void AsteroidSystem::setLightingParameters(Ship &ship, glm::vec3 &camDir) {
+    asteroidShaderProgram->useProgram();
 
-void sendMvpMatrix(){
-
+    ship.sendLightingData(asteroidShaderProgramUniforms.pointLights[0].position,
+                          asteroidShaderProgramUniforms.pointLights[0].color,
+                          asteroidShaderProgramUniforms.pointLights[1].position,
+                          asteroidShaderProgramUniforms.pointLights[1].color,
+                          asteroidShaderProgramUniforms.directionalLights[0].position,
+                          asteroidShaderProgramUniforms.directionalLights[0].direction,
+                          asteroidShaderProgramUniforms.directionalLights[0].color );
 }

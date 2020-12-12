@@ -19,17 +19,22 @@ Ship::Ship(char* ShipTexturePath) {
     shipShaderUniforms.pointLights[0].color        = shipShader->getUniformLocation("pointLights[0].color");
     shipShaderUniforms.pointLights[1].position     = shipShader->getUniformLocation("pointLights[1].position");
     shipShaderUniforms.pointLights[1].color        = shipShader->getUniformLocation("pointLights[1].color");
-    // Directional lights uniforms
-    shipShaderUniforms.directionalLights[0].direction     = shipShader->getUniformLocation("directionalLights[0].direction");
-    shipShaderUniforms.directionalLights[0].color         = shipShader->getUniformLocation("directionalLights[0].color");
 
     shipShaderAttributes.vPos         = shipShader->getAttributeLocation("vPos");
     shipShaderAttributes.vNormal      = shipShader->getAttributeLocation("vNormal");
     shipShaderAttributes.vUV          = shipShader->getAttributeLocation("vUV");
 
+    engineShader = new CSCI441::ShaderProgram( "shaders/engine.v.glsl", "shaders/engine.f.glsl" );
+    engineShaderUniforms.mvpMatrix    = engineShader->getUniformLocation("mvpMatrix");
+    engineShaderUniforms.time    = engineShader->getUniformLocation("time");
+
+    engineShaderAttributes.vPos       = engineShader->getAttributeLocation("vPos");
 
     model = new CSCI441::ModelLoader();
     model->loadModelFile("data/ship.obj");
+
+    engineModel = new CSCI441::ModelLoader();
+    engineModel->loadModelFile("data/engine.obj");
 
     glGenTextures(1, &shipTextureHandle);
     glBindTexture(GL_TEXTURE_2D, shipTextureHandle);
@@ -49,16 +54,23 @@ Ship::Ship(char* ShipTexturePath) {
     shipShader->useProgram();
 
     // Send spot light colors
-    glm:: vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
-    glUniform3fv(shipShaderUniforms.pointLights[0].color, 1, &color[0]);
-    color = glm::vec3(0.0f, 1.0f, 0.0f);
-    glUniform3fv(shipShaderUniforms.pointLights[1].color, 1, &color[0]);
+    lightColors[0] = glm::vec3(0.0f, 2.0f, 0.0f);
+    glUniform3fv(shipShaderUniforms.pointLights[0].color, 1, &lightColors[0][0]);
+
+    lightColors[1] = glm::vec3(0.0f, 0.0f, 4.0f);
+    glUniform3fv(shipShaderUniforms.pointLights[1].color, 1, &lightColors[1][0]);
+
+    lightColors[2] = glm::vec3(400.0f, 400.0f, 300.0f);
+
+
+
+
+    engineTransforms[0] = glm::scale(glm::translate(glm::mat4(1), glm::vec3(-0.2f, -0.3f, 0.9f)), glm::vec3(0.35f, 0.75, 0.75));
+    engineTransforms[1] = glm::scale(glm::translate(glm::mat4(1), glm::vec3(-0.2f, -0.3f, -0.9f)), glm::vec3(0.35f, 0.75, 0.75));
 
     // Send directional light info
-    glm::vec3 direction = glm::vec3(-1.0f, -1.0f, 0.0f);
-    color = glm::vec3(0.8f, 0.8f, 0.8f);
-    glUniform3fv(shipShaderUniforms.directionalLights[0].direction, 1, &direction[0]);
-    glUniform3fv(shipShaderUniforms.directionalLights[0].color, 1, &color[0]);
+    directionalLight = glm::vec3(-1.0f, -1.0f, 0.0f);
+    lightColors[3] = glm::vec3(0.0f, 50.0f, 0.0f);
 
 }
 
@@ -75,28 +87,54 @@ void Ship::rotatey(GLfloat yInput, GLfloat timeStep) {
     yaw = yInput * timeStep;
 }
 
-void Ship::draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 rotationMtx){
+void Ship::draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projectionMtx, GLfloat time) {
     shipShader->useProgram();
 
-    modelMtx = glm::rotate( glm::rotate(modelMtx, pitch, glm::vec3(0, 1, 0)), yaw, glm::vec3(0, 0, 1) );
-    glm::mat4 mvpMatrix = rotationMtx * viewMtx * modelMtx;
+    modelMtx = glm::rotate(glm::rotate(modelMtx, pitch, glm::vec3(0, 1, 0)), yaw, glm::vec3(0, 0, 1));
+    glm::mat4 mvpMatrix = projectionMtx * viewMtx * modelMtx;
 
-    glUniformMatrix4fv(shipShaderUniforms.mvpMatrix, 1, GL_FALSE, &mvpMatrix[0][0] );
-    glUniformMatrix4fv(shipShaderUniforms.modelMatrix, 1, GL_FALSE, &modelMtx[0][0] );
-    glm::mat3 normalMtx = glm::mat3( glm::transpose(glm::inverse(modelMtx)));
-    glUniformMatrix3fv(shipShaderUniforms.normalMatrix, 1, GL_FALSE, &normalMtx[0][0] );
+    glUniformMatrix4fv(shipShaderUniforms.mvpMatrix, 1, GL_FALSE, &mvpMatrix[0][0]);
+    glUniformMatrix4fv(shipShaderUniforms.modelMatrix, 1, GL_FALSE, &modelMtx[0][0]);
+    glm::mat3 normalMtx = glm::mat3(glm::transpose(glm::inverse(modelMtx)));
+    glUniformMatrix3fv(shipShaderUniforms.normalMatrix, 1, GL_FALSE, &normalMtx[0][0]);
 
     // Send position of spot lights relative to ship position
-    glm::vec4 position = modelMtx * glm::vec4(-1.5f, -0.25f, -1.5f, 1.0f);
-    glUniform3fv(shipShaderUniforms.pointLights[0].position, 1, &position[0]);
-    position = modelMtx * glm::vec4(-1.5f, -0.25f, 1.5f, 1.0f);
-    glUniform3fv(shipShaderUniforms.pointLights[1].position, 1, &position[0]);
+    lightPositions[0] = glm::vec3(modelMtx * glm::vec4(-1.5f, -0.25f, -1.5f, 1.0f));
+    glUniform3fv(shipShaderUniforms.pointLights[0].position, 1, &lightPositions[0][0]);
+    lightPositions[1] = glm::vec3(modelMtx * glm::vec4(-1.5, -0.25f, 1.5f, 1.0f));
+    glUniform3fv(shipShaderUniforms.pointLights[1].position, 1, &lightPositions[1][0]);
+
+    lightPositions[2] = glm::vec3(modelMtx * glm::vec4(3, 0, 0, 1.0f));
+    directionalLight = glm::vec3(modelMtx * glm::vec4(1, 0, 0, 0));
 
     glBindTexture(GL_TEXTURE_2D, shipTextureHandle);
+    model->draw(shipShaderAttributes.vPos, shipShaderAttributes.vNormal, shipShaderAttributes.vUV, -1, -1, -1, -1,
+                shipTextureHandle);
 
-    //model->draw(positionLocation, normalLocation, texCoordLocation, matDiffLocation, matSpecLocation, matShinLocation, matAmbLocation, diffuseTexture)
-    model->draw( shipShaderAttributes.vPos, shipShaderAttributes.vNormal,shipShaderAttributes.vUV, -1, -1, -1, -1, shipTextureHandle );      // TODO #18 set actual vertex texture coordinate location
+    engineShader->useProgram();
+    glUniform1f(engineShaderUniforms.time, time);
+    for (glm::mat4 engineTransform : engineTransforms) {
+
+        mvpMatrix = projectionMtx * viewMtx * modelMtx * engineTransform;
+        glUniformMatrix4fv(engineShaderUniforms.mvpMatrix, 1, GL_FALSE, &mvpMatrix[0][0]);
+        engineModel->draw(engineShaderAttributes.vPos, -1, -1, -1, -1, -1,
+                          -1,
+                          shipTextureHandle);
+    }
 }
+
+void Ship::sendLightingData(GLint pointLight1Location, GLint pointLight1Color, GLint pointLight2Location, GLint pointLight2Color, GLint directionalLightPosition, GLint directionalLightDirection, GLint directionalLightColor ){
+    glUniform3fv(pointLight1Location, 1, &lightPositions[0][0]);
+    glUniform3fv(pointLight1Color, 1, &lightColors[0][0]);
+
+    glUniform3fv(pointLight2Location, 1, &lightPositions[1][0]);
+    glUniform3fv(pointLight2Color, 1, &lightColors[1][0]);
+
+    glUniform3fv(directionalLightPosition, 1, &lightPositions[2][0]);
+    glUniform3fv(directionalLightColor, 1, &lightColors[2][0]);
+    glUniform3fv(directionalLightDirection, 1, &directionalLight[0]);
+}
+
 
 glm::vec3 Ship::getPosition() {
     return glm::vec3(0);

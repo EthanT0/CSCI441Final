@@ -18,7 +18,6 @@
 #include <CSCI441/ShaderProgram.hpp>    // a wrapper class for Shader Programs
 #include <ctime>
 
-#include "kirb.h"
 #include "Asteroid.h"
 #include "AsteroidSystem.h"
 
@@ -71,7 +70,6 @@ GLboolean keys[256] = {0};              // keep track of our key states
 GLboolean showCage, showCurve;
 
 // Global variables for our heroes and the skybox
-kirb kirbcopter;
 Ship spaceship;
 Skybox skybox;
 Asteroid asteroid1;
@@ -168,6 +166,7 @@ void updateCameraDirection() {
     }
 
     spaceship.sendViewDirection(Camera.camDir);
+    asteroidSystem.setLightingParameters(spaceship, Camera.camDir);
 }
 
 
@@ -314,11 +313,10 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
 
     glm::mat4 modelMtx(1.0f);
     if(freeCam) modelMtx = glm::translate(modelMtx, Camera.eyePos + Camera.camDir * Camera.cameraAngles.z);
-    spaceship.draw(modelMtx, viewMtx, projMtx);
+    spaceship.draw(modelMtx, viewMtx, projMtx, lastTime);
 
     lightingShader->useProgram();
     lastTime = glfwGetTime();
-    kirbcopter.draw(viewMtx, projMtx, glm::mat4(1));
     asteroidSystem.draw(viewMtx, projMtx);
 
     billboardShaderProgram->useProgram();
@@ -396,8 +394,7 @@ void updateScene() {
         spaceship.rotatex(-Camera.cameraAngles.x + M_PI/2.0f, 1.0f);
         spaceship.rotatey(Camera.cameraAngles.y - M_PI/3.8f, 1.0f); // ADJUST DENOMINATOR FOR starting ship angle
     }
-    kirbcopter.heightmapCollision(0);
-    kirbcopter.boundaryCollision(glm::vec3(-100, -100, -100), glm::vec3(100, 100, 100));
+
 
     if (sparkRenderTime < -0.0f) {
         particleSystem.reset();
@@ -456,7 +453,7 @@ GLFWwindow* setupGLFW() {
     glfwWindowHint( GLFW_DOUBLEBUFFER, GLFW_TRUE );                         // request double buffering
 
     // create a window for a given size, with a given title
-    GLFWwindow *window = glfwCreateWindow( WINDOW_WIDTH, WINDOW_HEIGHT, "A06 - Kirb doin Kirb things", nullptr, nullptr );
+    GLFWwindow *window = glfwCreateWindow( WINDOW_WIDTH, WINDOW_HEIGHT, "Final Project - Asteroids in 3D", nullptr, nullptr );
     if( !window ) {						// if the window could not be created, NULL is returned
         fprintf( stderr, "[ERROR]: GLFW Window could not be created\n" );
         glfwTerminate();
@@ -584,11 +581,6 @@ void setupScene() {
     billboardShaderProgram->useProgram();
     glUniform1i(billboardShaderProgramUniforms.image, 0);
     glUniform3fv(billboardShaderProgramUniforms.skyColor, 1, &skyColor[0]);
-
-    glm::vec3 kirbLightColor = 5.0f * glm::vec3(1.5, 0.25, 0.35);
-    glm::vec3 kirbPos = kirbcopter.getPosition();
-    glUniform3fv(lightingShaderUniforms.pointLight4Color, 1, &kirbLightColor[0]);
-    glUniform3fv(lightingShaderUniforms.pointLight4Pos, 1, &kirbPos[0]);
 }
 
 

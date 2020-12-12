@@ -1,13 +1,15 @@
 #version 410 core
 
-uniform sampler2D textureMap;
+out vec4 FragColor;
 
-in vec2 texPos;
+in vec3 coords;
+in vec2 uv;
 
-out vec4 fragColorOut;
+in vec3 light;
 
-void main() {
-    vec4 texel = texture(textureMap, texPos);
+uniform sampler2D asteroidTex;
 
-    fragColorOut = texel;
+void main()
+{
+    FragColor = vec4((light + 0.01f) * texture(asteroidTex, uv).rgb, 1);
 }
