@@ -1,13 +1,13 @@
 CSCI441Final Final Project - Enter the Temple
 Aiko - Amira Ramirez - apramriezgonzalez@mymail.mines.edu
 - Ethan - 
-- Evan Vaughan - 
+Not Evan Vaughan - Evan Vaughan - evaughan@mymail.mines.edu
 - Matthew Kline - 
 
 --------------------------------------------------------------------------
 
 Description:
-A brief, high level description of what the program is / does
+This program features a 3-dimensional revamp of the well known 1979 Atari game, Ateroids.
 
 Usage:
 The program starts in free cam mode. Use the ASDW keys to rotate the ship
@@ -35,7 +35,7 @@ Amira - Implemented Point lights, directional lighting on ship. Implemented
 Ethan - Set up starting base and implemented skybox. Created ship model and
 	read in through a file. Rendered ship with texture.
 
-Evan - Implemented a particle and particle system for animating asteroid
+Evan - Implemented a particle and particle system for animating asteroids
 	when destroyed. Collaborated on asteroid class and asteroid system.
 
 Matthew - Implemented asteroids and asteroid system clases.
