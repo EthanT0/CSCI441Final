@@ -62,6 +62,7 @@ Ship::Ship(char* ShipTexturePath) {
 
     lightColors[2] = glm::vec3(400.0f, 400.0f, 300.0f);
 
+    rotationSpeed = 4.0f;
 
 
 
@@ -74,17 +75,13 @@ Ship::Ship(char* ShipTexturePath) {
 
 }
 
-void Ship::rotate(GLfloat xInput, GLfloat yInput, GLfloat timeStep) {
-    yaw += xInput * timeStep;
-    pitch += yInput * timeStep;
-}
+void Ship::update(GLfloat yInput, GLfloat xInput, GLfloat flyInput, GLfloat timeStep) {
+    yaw += yInput * timeStep * rotationSpeed;
+    pitch -= xInput * timeStep * rotationSpeed;
 
-void Ship::rotatex(GLfloat xInput, GLfloat timeStep) {
-    pitch = xInput * timeStep;
-}
+    yaw = glm::clamp(yaw, -1.57f, 1.57f);
 
-void Ship::rotatey(GLfloat yInput, GLfloat timeStep) {
-    yaw = yInput * timeStep;
+    position += getForwardVector() * timeStep * flyInput;
 }
 
 void Ship::draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projectionMtx, GLfloat time) {
@@ -138,6 +135,18 @@ void Ship::sendLightingData(GLint pointLight1Location, GLint pointLight1Color, G
 
 glm::vec3 Ship::getPosition() {
     return glm::vec3(0);
+}
+
+glm::vec3 Ship::getForwardVector(){
+    return glm::vec3(Ship::getTransform() * glm::vec4(1, 0, 0, 0));
+}
+
+glm::mat4 Ship::getTransform(){
+    return glm::rotate(glm::rotate(glm::translate(glm::mat4(1), position), pitch, glm::vec3(0, 1, 0)), yaw, glm::vec3(0, 0, 1));
+}
+
+glm::vec3 Ship::shipviewCameraVector(){
+    return getForwardVector();
 }
 
 void Ship::sendViewDirection(glm::vec3 &camDir){

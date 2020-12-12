@@ -29,14 +29,6 @@ struct shipDirectionalLight{
     GLint color;
 };
 
-struct shipSpotLight{
-    GLint position;
-    GLint direction;
-    GLint color;
-    GLint cutOff;
-    GLint outerCutOff;
-};
-
 struct shipShaderUniforms {         // stores the locations of all of our shader uniforms
     GLint mvpMatrix;
     GLint modelMatrix;
@@ -64,12 +56,14 @@ struct engineShaderAttributes {       // stores the locations of all of our shad
 
 class Ship {
 
+    glm::vec3 position;
+
     glm::vec3 lightPositions[3];
     glm::vec3 lightColors[3];
     glm::vec3 directionalLight;
 
+    GLfloat rotationSpeed;
     GLfloat pitch, yaw;
-    //glm::vec3 position;
 
     glm::mat4 engineTransforms[2];
 
@@ -92,7 +86,7 @@ public:
 
     Ship(char* ShipTexturePath);
 
-    void rotate(GLfloat xInput, GLfloat yInput, GLfloat timeStep);
+    void update(GLfloat xInput, GLfloat yInput, GLfloat flyInput, GLfloat timeStep);
 
     void rotatex(GLfloat xInput, GLfloat timeStep);
 
@@ -105,6 +99,12 @@ public:
     glm::vec3 getPosition();
 
     void sendViewDirection(glm::vec3 &camDir);
+
+    glm::vec3 getForwardVector();
+
+    glm::mat4 getTransform();
+
+    glm::vec3 shipviewCameraVector();
 };
 
 
