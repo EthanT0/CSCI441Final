@@ -50,8 +50,6 @@ AsteroidSystem::AsteroidSystem(char* texturePath) {
         float s, t;
     };
 
-
-
     const int stacks = 10;
     const int slices = 10;
 
@@ -100,6 +98,7 @@ AsteroidSystem::AsteroidSystem(char* texturePath) {
     VertexTextured* v = &asteroidVertices[0];
     unsigned short* i = &asteroidIndices[0];
 
+
     asteroidShaderProgram->useProgram();
 
     glGenVertexArrays( 1, &asteroidVAO );
@@ -109,6 +108,7 @@ AsteroidSystem::AsteroidSystem(char* texturePath) {
 
     glBindBuffer( GL_ARRAY_BUFFER, asteroidVBOs[0] );
     glBufferData(GL_ARRAY_BUFFER, sizeof(v), v, GL_STATIC_DRAW );
+
     glEnableVertexAttribArray( asteroidShaderProgramAttributes.vPos );
     glVertexAttribPointer( asteroidShaderProgramAttributes.vPos, 3, GL_FLOAT, GL_FALSE, sizeof(VertexTextured), (void*) 0 );
 
@@ -131,6 +131,7 @@ AsteroidSystem::AsteroidSystem(char* texturePath) {
         Asteroid asteroid = Asteroid(glm::vec3(randNumber1(20), randNumber1(20), randNumber1(20)), // Initial position
                                      glm::vec3(1, 1, 1),  // Axis of rotation
                                      glm::vec3(10, 10, 10)); // Scale
+
 
         asteroids.push_back(asteroid);
         translations.push_back(glm::vec3(randNumber1(2), randNumber1(2), randNumber1(2))); // Generate random initial translation vector

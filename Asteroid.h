@@ -27,34 +27,17 @@
 
 
 class Asteroid {
-    struct AsteroidShaderProgramUniforms {
-        GLint mvpMatrix;                    // the MVP Matrix to apply
-        GLint textureMap;
-
-    };
-    struct AsteroidShaderProgramAttributes {
-        GLint vPos;                         // position of our vertex
-        GLint tPosition;
-
-    };
-
-    const char* textureFile;
-    GLuint asteroidTextureHandle;
     GLuint asteroidVAO, asteroidVBOs[2];
-
-    struct AsteroidShaderProgramUniforms asteroidShaderProgramUniforms;
-    struct AsteroidShaderProgramAttributes asteroidShaderProgramAttributes;
-    CSCI441::ShaderProgram* asteroidShaderProgram = nullptr;
-
 
 public:
     Asteroid();
-    Asteroid(char* texturePath, glm::vec3 initialPosition, glm::vec3 rotAxis, glm::vec3 scale);
+    Asteroid(glm::vec3 initialPosition, glm::vec3 rotAxis, glm::vec3 scale);
     float rotationAngle;
     glm::vec3 translationVector;
     glm::vec3 rotationAxis;
     glm::vec3 scaleVector;
-    void draw(glm::mat4 viewMtx, glm::mat4 projMtx, glm::vec3 translation, float rotAngle);
+    glm::vec3 getPosition();
+    glm::mat4 draw(glm::mat4 viewMtx, glm::mat4 projMtx, glm::vec3 translation, float rotAngle);
 
 
 };
