@@ -18,6 +18,8 @@
 #include <glm/gtc/noise.hpp>
 #include <CSCI441/ShaderProgram.hpp>
 
+#include "Projectile.h"
+
 struct shipPointLight{              // stores point light information
     GLint position;
     GLint color;
@@ -55,8 +57,15 @@ struct engineShaderAttributes {       // stores the locations of all of our shad
     GLint vPos;
 };
 
-class Ship {
+struct projectileShaderUniforms {         // stores the locations of all of our shader uniforms
+    GLint mvpMatrix;
+};
 
+struct projectileShaderAttributes {       // stores the locations of all of our shader attributes
+    GLint vPos;
+};
+
+class Ship {
     GLfloat acceleration;
 
     glm::vec3 position;
@@ -78,19 +87,27 @@ class Ship {
 
     CSCI441::ShaderProgram *shipShader = nullptr;   // the wrapper for our shader program
     CSCI441::ShaderProgram *engineShader = nullptr;   // the wrapper for our shader program
+    CSCI441::ShaderProgram *projectileShader = nullptr;   // the wrapper for our shader program
+
 
     struct shipShaderUniforms shipShaderUniforms;
     struct shipShaderAttributes shipShaderAttributes;
 
     struct engineShaderUniforms engineShaderUniforms;
     struct engineShaderAttributes engineShaderAttributes;
+
+    struct projectileShaderUniforms projectileShaderUniforms;
+    struct projectileShaderAttributes projectileShaderAttributes;
+
+    GLfloat shotCooldown = 0;
 public:
+    std::vector<Projectile> shots;
 
     Ship();
 
     Ship(char* ShipTexturePath);
 
-    void update(GLfloat xInput, GLfloat yInput, GLfloat flyInput, GLfloat timeStep);
+    void update(GLfloat xInput, GLfloat yInput, GLfloat flyInput, GLfloat shootInput, GLfloat timeStep, glm::vec3 shotDomainSize);
 
     void rotatex(GLfloat xInput, GLfloat timeStep);
 

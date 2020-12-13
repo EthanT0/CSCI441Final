@@ -5,8 +5,9 @@
 #ifndef CSCI441FINAL_ASTEROIDSYSTEM_H
 #define CSCI441FINAL_ASTEROIDSYSTEM_H
 
-#include "Asteroid.h"
 #include "vector"
+
+#include "Asteroid.h"
 #include "Ship.h"
 
 class AsteroidSystem {
@@ -36,22 +37,33 @@ class AsteroidSystem {
 
     glm::vec3 domainScale;
 
+    GLint asteroidsDestroyed = 0;
+
+
+
 public:
+
+
     void setLightingParameters(Ship &ship, glm::vec3 &camDir);
 
     std::vector<Asteroid> asteroids;
 
     AsteroidSystem();
 
-    AsteroidSystem(char* texturePath, glm::vec3 domainScale, GLint initialCount = 60);
+    AsteroidSystem(char* texturePath, glm::vec3 domainScale, GLint initialCount = 50);
 
     GLboolean update(GLfloat timeStep, Ship& ship);
+
+    GLint getAsteroidsDestroyed();
 
     void draw(glm::mat4, glm::mat4);
 
     void spawnAsteroid();
 
     void sendMvpMatrix();
+
+
+    GLboolean gameWon();
 };
 
 #endif //CSCI441FINAL_ASTEROIDSYSTEM_H

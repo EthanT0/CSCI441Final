@@ -21,8 +21,6 @@
 #include "Asteroid.h"
 #include "AsteroidSystem.h"
 
-#include "ParticleSystem.h"
-
 #include "Ship.h"
 #include "Skybox.h"
 
@@ -66,37 +64,20 @@ glm::vec3 pointPosition;
 GLint controlKey;                       // Keeps track of left control's press status
 
 GLboolean keys[256] = {0};              // keep track of our key states
-GLboolean showCage, showCurve;
 
 // Global variables for our heroes and the skybox
 Ship spaceship;
 Skybox skybox;
 Asteroid asteroid1;
-ParticleSystem particleSystem;
 
 AsteroidSystem asteroidSystem;
 
-float sparkRenderTime = -3.0f;
-
-GLuint billboardTexHandle;
-
-CSCI441::ShaderProgram *billboardShaderProgram = nullptr;
-struct BillboardShaderProgramUniforms {
-    GLint mvMatrix;                     // the ModelView Matrix to apply
-    GLint projMatrix;                   // the Projection Matrix to apply
-    GLint image;                        // the texture to bind
-    GLint skyColor;                        // the texture to bind
-
-} billboardShaderProgramUniforms;
-struct BillboardShaderProgramAttributes {
-    GLint vPos;                         // the vertex position
-} billboardShaderProgramAttributes;
 
 char* skyboxPathways[] = {"data/right.png", "data/left.png", "data/up.png", "data/down.png", "data/front.png", "data/back.png"};
 char* shipTexturePathway = "data/ship.png";
-char* billboardTexPath = "data/spark.png";
 
 GLboolean gameOver = false;
+GLboolean gameWon = false;
 
 //*************************************************************************************
 //
@@ -195,14 +176,12 @@ static void keyboard_callback( GLFWwindow *window, int key, int scancode, int ac
                 controlKey = action;
                 break;
             case GLFW_KEY_1:
-                showCage = !showCage;
                 Camera.mode = shipView;
                 Camera.cameraSpeed = glm::vec2(0.25f, 0.02f);
                 Camera.arcballAngles = glm::vec3(M_PI/2.0f, -M_PI/2.0f, 20.0f);
                 updateCameraDirection();
                 break;
             case GLFW_KEY_2:
-                showCurve = !showCurve;
                 Camera.mode = arcball;
                 Camera.cameraSpeed = glm::vec2(0.01f, 0.03f);
                 Camera.arcballAngles = glm::vec3(-M_PI/2.0f, M_PI/4.6f, 20.0f);
@@ -291,9 +270,6 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
     lastTime = glfwGetTime();
     asteroidSystem.draw(viewMtx, projMtx);
 
-    billboardShaderProgram->useProgram();
-    glBindTexture(GL_TEXTURE_2D, billboardTexHandle);
-    particleSystem.draw(viewMtx, projMtx, Camera.eyePos, Camera.camDir);
 }
 
 
@@ -306,7 +282,7 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
 //
 ////////////////////////////////////////////////////////////////////////////////
 void updateScene() {
-    GLfloat horizontalInput = 0, verticalInput = 0, flyInput = 0;
+    GLfloat horizontalInput = 0, verticalInput = 0, flyInput = 0, shootInput = 0;
     deltaTime = glfwGetTime() - lastTime;
     // turn right
     if (keys[GLFW_KEY_D]) {
@@ -332,29 +308,20 @@ void updateScene() {
     if (keys[GLFW_KEY_X]) {
         flyInput -= 1;
     }
+    // shoot
+    if (keys[GLFW_KEY_LEFT_SHIFT]) {
+        shootInput = 1;
+    }
 
     //Camera.arcballAngles.x += horizontalInput * Camera.cameraSpeed.y;
     //Camera.arcballAngles.y += verticalInput * Camera.cameraSpeed.y;
     updateCameraDirection();
 
     deltaTime = glfwGetTime() - lastTime;
-    spaceship.update(verticalInput, horizontalInput, flyInput, deltaTime);
-
-
-    if (sparkRenderTime < -0.0f) {
-        particleSystem.reset();
-    } else if (sparkRenderTime < 3.01f) {
-        sparkRenderTime += deltaTime;
-    }
-
-    if (sparkRenderTime < 3.0f) {
-    } else {
-        sparkRenderTime = -1.0f;
-    }
-
-    bool particleCollision = false; // Set to true if there was a collision
+    spaceship.update(verticalInput, horizontalInput, flyInput, shootInput, deltaTime, glm::vec4(800));
 
     gameOver = asteroidSystem.update(deltaTime, spaceship);
+    gameWon = asteroidSystem.gameWon();
 
     Asteroid temp = asteroidSystem.asteroids[0]; // Change asteroid with collided asteroid
 }
@@ -452,17 +419,9 @@ void setupGLEW() {
 //
 ////////////////////////////////////////////////////////////////////////////////
 void setupShaders() {
-    billboardShaderProgram = new CSCI441::ShaderProgram( "shaders/billboardQuadShader.v.glsl", "shaders/billboardQuadShader.g.glsl", "shaders/billboardQuadShader.f.glsl" );
-    billboardShaderProgramUniforms.mvMatrix            = billboardShaderProgram->getUniformLocation( "mvMatrix");
-    billboardShaderProgramUniforms.projMatrix          = billboardShaderProgram->getUniformLocation( "projMatrix");
-    billboardShaderProgramUniforms.image               = billboardShaderProgram->getUniformLocation( "image");
-    billboardShaderProgramUniforms.skyColor            = billboardShaderProgram->getUniformLocation( "skyColor");
-
-    billboardShaderProgramAttributes.vPos              = billboardShaderProgram->getAttributeLocation( "vPos");
-
-
-    skybox = Skybox(skyboxPathways);
+   skybox = Skybox(skyboxPathways);
     spaceship = Ship(shipTexturePathway);
+
     asteroidSystem = AsteroidSystem("textures/asteroid.jpg", glm::vec3(400, 400, 400));
 
 //    asteroid1 = Asteroid("textures/asteroid.jpg", glm::vec3(10, 10, 10), glm::vec3(1, 1, 1), glm::vec3(10, 10, 10));
@@ -492,38 +451,8 @@ void setupScene() {
     Camera.cameraSpeed = glm::vec2(0.25f, 0.02f);
     updateCameraDirection();
 
-    billboardShaderProgram->useProgram();
-    glUniform1i(billboardShaderProgramUniforms.image, 0);
-    glUniform3fv(billboardShaderProgramUniforms.skyColor, 1, &skyColor[0]);
-}
-
-
-void setupTextures(){
-    glGenTextures(1, &billboardTexHandle);
-    glBindTexture(GL_TEXTURE_2D, billboardTexHandle);
-
-    int width, height, channels;
-    unsigned char *data = stbi_load( billboardTexPath, &width, &height, &channels, 0);
-    if(data) {
-        fprintf(stdout, "Loaded billboard texture [%s]\n", billboardTexPath);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data
-        );
-    }
-    else {
-        fprintf(stdout, "texture failed to load [%s]\n", billboardTexPath );
-    }
-    stbi_image_free(data);
-
 
 }
-
 
 ///*************************************************************************************
 //
@@ -542,7 +471,6 @@ int main() {
     CSCI441::OpenGLUtils::printOpenGLInfo();
 
     setupShaders();                                         // load our shader program into memory
-    setupTextures();
     setupScene();
 
     updateScene();
@@ -583,7 +511,15 @@ int main() {
 
         if(gameOver) {
             glfwSetWindowShouldClose(window, GLFW_TRUE);
-            fprintf(stdout, "\n===================================\nGame over! You hit an asteroid.\n===================================\n");
+            fprintf(stdout, "\n===================================\nGame over! You hit an asteroid.\nTotal Destroyed Asteroids:%d\n===================================\n", asteroidSystem.getAsteroidsDestroyed());
+        }
+        else {
+            if (gameWon) {
+                glfwSetWindowShouldClose(window, GLFW_TRUE);
+                fprintf(stdout,
+                        "\n===================================\nYou win! You nagivated the asteroid field.\nTotal Destroyed Asteroids:%d\n===================================\n",
+                        asteroidSystem.getAsteroidsDestroyed());
+            }
         }
     }
 

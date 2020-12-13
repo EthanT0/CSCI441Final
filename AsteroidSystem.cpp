@@ -11,6 +11,8 @@ GLfloat randNumber1( GLfloat max ) {
 AsteroidSystem::AsteroidSystem(){}
 
 AsteroidSystem::AsteroidSystem(char* texturePath, glm::vec3 domainScale, GLint initialCount) {
+
+
     asteroidTextureHandle = 0;
     this->domainScale = domainScale;
 
@@ -149,13 +151,15 @@ AsteroidSystem::AsteroidSystem(char* texturePath, glm::vec3 domainScale, GLint i
 
 }
 
+
+//check for collisions and spawn particles accordingly. As well, checks if the ship has hit an asteroid
 GLboolean AsteroidSystem::update(GLfloat timeStep, Ship& ship) {
     for(int i = 0; i < asteroids.size(); i ++){
         asteroids[i].update(timeStep, ship.getVelocity(), domainScale);
-
         if(asteroids[i].collisionTest(ship.getPosition(), 1.5f)) {
             return true;
         }
+
 
 
         for(int j = 0; j < i; j ++){
@@ -166,6 +170,18 @@ GLboolean AsteroidSystem::update(GLfloat timeStep, Ship& ship) {
                     asteroids[i].bounce(delta);
                     asteroids[j].bounce(delta);
                 }
+            }
+        }
+
+        //check for asteroid collisions with projectiles
+        for (int k = 0; k < ship.shots.size(); k ++ ){
+            if(asteroids[i].collisionTest(ship.shots[k].getPosition(), 0)) {
+                //erase both the projectile and the asteroid
+                ship.shots.erase(ship.shots.begin() + k);
+                asteroids.erase(asteroids.begin() + i);
+                asteroidsDestroyed ++;
+                i--;
+                break;
             }
         }
     }
@@ -216,4 +232,12 @@ void AsteroidSystem::spawnAsteroid() {
 
 
     asteroids.push_back(Asteroid(position,  velocity, rotationAxis,  10.0f, randNumber1(1.0f)));
+}
+
+GLint AsteroidSystem::getAsteroidsDestroyed() {
+    return asteroidsDestroyed;
+}
+
+GLboolean AsteroidSystem::gameWon(){
+    return (asteroids.size() == 0);
 }

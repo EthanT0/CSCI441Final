@@ -6,8 +6,6 @@ uniform float forwardInput;
 in vec3 localPosition;
 uniform float time;
 
-uniform vec3 color;
-
 void main()
 {
     float timeOffset = time + sin(localPosition.x * 20) + sin(localPosition.y * 10) + sin(localPosition.z * 10);

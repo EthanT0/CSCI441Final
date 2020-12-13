@@ -33,6 +33,10 @@ Ship::Ship(char* ShipTexturePath) {
     engineShaderUniforms.forwardInput = engineShader->getUniformLocation("forwardInput");
     engineShaderAttributes.vPos       = engineShader->getAttributeLocation("vPos");
 
+    projectileShader = new CSCI441::ShaderProgram( "shaders/projectile.v.glsl", "shaders/projectile.f.glsl" );
+    projectileShaderUniforms.mvpMatrix= projectileShader->getUniformLocation("mvpMatrix");
+    projectileShaderAttributes.vPos   = projectileShader->getAttributeLocation("vPos");
+
     model = new CSCI441::ModelLoader();
     model->loadModelFile("data/ship.obj");
 
@@ -65,7 +69,7 @@ Ship::Ship(char* ShipTexturePath) {
 
     lightColors[2] = glm::vec3(3600.0f, 3600.0f, 3000.0f);
 
-    rotationSpeed = 4.0f;
+    rotationSpeed = 2.0f;
 
 
 
@@ -78,7 +82,7 @@ Ship::Ship(char* ShipTexturePath) {
 
 }
 
-void Ship::update(GLfloat yInput, GLfloat xInput, GLfloat flyInput, GLfloat timeStep) {
+void Ship::update(GLfloat yInput, GLfloat xInput, GLfloat flyInput, GLfloat shootInput, GLfloat timeStep, glm::vec3 shotDomainSize) {
     yaw += yInput * timeStep * rotationSpeed;
     pitch -= xInput * timeStep * rotationSpeed;
 
@@ -89,6 +93,24 @@ void Ship::update(GLfloat yInput, GLfloat xInput, GLfloat flyInput, GLfloat time
 
     engineShader->useProgram();
     glUniform1f(engineShaderUniforms.forwardInput, flyInput);
+
+
+    if(shootInput > 0 && shotCooldown <= 0.0f ) {
+        shots.push_back(Projectile(position + getForwardVector(), 40.0f * getForwardVector()));
+        shotCooldown = 0.15f;
+    }
+    if(shotCooldown >= 0.0f) shotCooldown -= timeStep;
+
+    for (int i = 0; i < shots.size(); i ++ ) {
+        //shots update multiple times to avoid misses from overshooting
+        for(int j = 1; j < 4; j ++ ) {
+            if (shots[i].update(timeStep, shotDomainSize)) {
+                shots.erase(shots.begin() + i);
+                i--;
+                j = 1000;
+            }
+        }
+    }
 }
 
 void Ship::draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projectionMtx, GLfloat time) {
@@ -123,7 +145,16 @@ void Ship::draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projectionMtx, 
         glUniformMatrix4fv(engineShaderUniforms.mvpMatrix, 1, GL_FALSE, &mvpMatrix[0][0]);
         engineModel->draw(engineShaderAttributes.vPos, -1, -1, -1, -1, -1,
                           -1,
-                          shipTextureHandle);
+                          -1);
+    }
+
+    projectileShader->useProgram();
+    for (Projectile & shot : shots) {
+        mvpMatrix = projectionMtx * viewMtx * shot.getTransformation();
+        glUniformMatrix4fv(projectileShaderUniforms.mvpMatrix, 1, GL_FALSE, &mvpMatrix[0][0]);
+        engineModel->draw(projectileShaderAttributes.vPos, -1, -1, -1, -1, -1,
+                          -1,
+                          -1);
     }
 }
 
