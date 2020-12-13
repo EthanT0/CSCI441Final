@@ -68,7 +68,7 @@ vec3 calculateDirectionalLight(directionalLight light){
     float directionalFalloff = clamp(5.0f * angularProximity - 3.0f, 0.0f, 1.0f);
 
 
-    return log(1 + directionalFalloff * (max(I_d, 0) + max(I_s, 0)));
+    return log(1 + directionalFalloff) * (max(I_d, 0) + max(I_s, 0));
 }
 
 void main()

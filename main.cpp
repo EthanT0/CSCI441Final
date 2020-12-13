@@ -92,30 +92,11 @@ struct BillboardShaderProgramAttributes {
     GLint vPos;                         // the vertex position
 } billboardShaderProgramAttributes;
 
-
-CSCI441::ShaderProgram *lightingShader = nullptr;   // the wrapper for our shader program
-struct LightingShaderUniforms {         // stores the locations of all of our shader uniforms
-    GLint mvpMatrix;
-    GLint normalMatrix;
-    GLint objectMatrix;
-
-    GLint materialColor;
-    GLint lightDirection;
-    GLint lightColor;
-
-    GLint pointLight4Color;
-    GLint pointLight4Pos;
-
-}lightingShaderUniforms;
-
-struct LightingShaderAttributes {       // stores the locations of all of our shader attributes
-    GLint vPos;
-    GLint vNormal;
-} lightingShaderAttributes;
-
 char* skyboxPathways[] = {"data/right.png", "data/left.png", "data/up.png", "data/down.png", "data/front.png", "data/back.png"};
 char* shipTexturePathway = "data/ship.png";
 char* billboardTexPath = "data/spark.png";
+
+GLboolean gameOver = false;
 
 //*************************************************************************************
 //
@@ -307,15 +288,12 @@ void renderScene( glm::mat4 viewMtx, glm::mat4 projMtx )  {
 
     spaceship.draw(modelMtx, viewMtx, projMtx, lastTime);
 
-    lightingShader->useProgram();
     lastTime = glfwGetTime();
     asteroidSystem.draw(viewMtx, projMtx);
 
     billboardShaderProgram->useProgram();
     glBindTexture(GL_TEXTURE_2D, billboardTexHandle);
     particleSystem.draw(viewMtx, projMtx, Camera.eyePos, Camera.camDir);
-
-
 }
 
 
@@ -374,18 +352,11 @@ void updateScene() {
         sparkRenderTime = -1.0f;
     }
 
-    // TODO: Check all asteroids for collisions with projectiles
-
     bool particleCollision = false; // Set to true if there was a collision
 
+    gameOver = asteroidSystem.update(deltaTime, spaceship);
+
     Asteroid temp = asteroidSystem.asteroids[0]; // Change asteroid with collided asteroid
-
-    if (particleCollision) { // Place particle system and collided asteroid and draw for 3 seconds
-        sparkRenderTime = 0;
-        particleSystem = ParticleSystem(temp.getPosition(), 100, billboardShaderProgramAttributes.vPos, billboardTexHandle, billboardShaderProgramUniforms.projMatrix, billboardShaderProgramUniforms.mvMatrix);
-        particleSystem.update(deltaTime, temp.getPosition(), glm::vec3(20,20,20));
-    }
-
 }
 
 //*************************************************************************************
@@ -481,22 +452,6 @@ void setupGLEW() {
 //
 ////////////////////////////////////////////////////////////////////////////////
 void setupShaders() {
-
-    lightingShader = new CSCI441::ShaderProgram( "shaders/vertexshader.v.glsl", "shaders/vertexshader.f.glsl" );
-    lightingShaderUniforms.mvpMatrix        = lightingShader->getUniformLocation("mvpMatrix");
-    lightingShaderUniforms.normalMatrix     = lightingShader->getUniformLocation("normalMatrix");
-    lightingShaderUniforms.objectMatrix     = lightingShader->getUniformLocation("objectMatrix");
-
-    lightingShaderUniforms.materialColor    = lightingShader->getUniformLocation("materialColor");
-    lightingShaderUniforms.lightDirection   = lightingShader->getUniformLocation("lightDirection");
-    lightingShaderUniforms.lightColor       = lightingShader->getUniformLocation("lightColor");
-
-    lightingShaderUniforms.pointLight4Color = lightingShader->getUniformLocation("pointLight4Color");
-    lightingShaderUniforms.pointLight4Pos   = lightingShader->getUniformLocation("pointLight4Pos");
-
-    lightingShaderAttributes.vPos           = lightingShader->getAttributeLocation("vPos");
-    lightingShaderAttributes.vNormal        = lightingShader->getAttributeLocation("vNormal");
-
     billboardShaderProgram = new CSCI441::ShaderProgram( "shaders/billboardQuadShader.v.glsl", "shaders/billboardQuadShader.g.glsl", "shaders/billboardQuadShader.f.glsl" );
     billboardShaderProgramUniforms.mvMatrix            = billboardShaderProgram->getUniformLocation( "mvMatrix");
     billboardShaderProgramUniforms.projMatrix          = billboardShaderProgram->getUniformLocation( "projMatrix");
@@ -508,7 +463,7 @@ void setupShaders() {
 
     skybox = Skybox(skyboxPathways);
     spaceship = Ship(shipTexturePathway);
-    asteroidSystem = AsteroidSystem("textures/asteroid.jpg");
+    asteroidSystem = AsteroidSystem("textures/asteroid.jpg", glm::vec3(400, 400, 400));
 
 //    asteroid1 = Asteroid("textures/asteroid.jpg", glm::vec3(10, 10, 10), glm::vec3(1, 1, 1), glm::vec3(10, 10, 10));
 
@@ -536,15 +491,6 @@ void setupScene() {
     Camera.arcballAngles = glm::vec3(M_PI/2.0f, -M_PI/1.45f, 20.0f);
     Camera.cameraSpeed = glm::vec2(0.25f, 0.02f);
     updateCameraDirection();
-
-    lightingShader->useProgram();               // use our lighting shader program so when
-    // assign uniforms, they get sent to this shader
-
-    lightDirection = glm::vec3(0, -1, 1);
-    lightColor = glm::vec3(1.0, 1.0, 0.80);
-
-    glUniform3fv(lightingShaderUniforms.lightDirection, 1, &lightDirection[0]);
-    glUniform3fv(lightingShaderUniforms.lightColor, 1, &lightColor[0]);
 
     billboardShaderProgram->useProgram();
     glUniform1i(billboardShaderProgramUniforms.image, 0);
@@ -599,9 +545,6 @@ int main() {
     setupTextures();
     setupScene();
 
-    // needed to connect our 3D Object Library to our shader
-    CSCI441::setVertexAttributeLocations( lightingShaderAttributes.vPos,  lightingShaderAttributes.vNormal);
-
     updateScene();
 
     //  This is our draw loop - all rendering is done here.  We use a loop to keep the window open
@@ -637,22 +580,21 @@ int main() {
         glfwPollEvents();				                    // check for any events and signal to redraw screen
 
         updateScene();
+
+        if(gameOver) {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+            fprintf(stdout, "\n===================================\nGame over! You hit an asteroid.\n===================================\n");
+        }
     }
 
-    fprintf( stdout, "[INFO]: Shutting down.......\n" );
-    fprintf( stdout, "[INFO]: ...freeing memory...\n" );
 
-    delete lightingShader;                                  // delete our shader program
     CSCI441::deleteObjectVBOs();                            // delete our library VBOs
     CSCI441::deleteObjectVAOs();                            // delete our library VAOs
 
-    fprintf( stdout, "[INFO]: ...closing GLFW.....\n" );
 
     glfwDestroyWindow( window );                            // clean up and close our window
     glfwTerminate();						                // shut down GLFW to clean up our context
 
-    fprintf( stdout, "[INFO]: ............complete\n" );
-    fprintf( stdout, "[INFO]: Goodbye\n" );
 
     return EXIT_SUCCESS;				                    // exit our program successfully!
 }

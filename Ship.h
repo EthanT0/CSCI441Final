@@ -48,6 +48,7 @@ struct shipShaderAttributes {       // stores the locations of all of our shader
 struct engineShaderUniforms {         // stores the locations of all of our shader uniforms
     GLint mvpMatrix;
     GLint time;
+    GLint forwardInput;
 };
 
 struct engineShaderAttributes {       // stores the locations of all of our shader attributes
@@ -56,7 +57,10 @@ struct engineShaderAttributes {       // stores the locations of all of our shad
 
 class Ship {
 
+    GLfloat acceleration;
+
     glm::vec3 position;
+    glm::vec3 velocity;
 
     glm::vec3 lightPositions[3];
     glm::vec3 lightColors[3];
@@ -97,6 +101,8 @@ public:
     void sendLightingData(GLint pointLight1Location, GLint pointLight1Color, GLint pointLight2Location, GLint pointLight2Color, GLint directionalLightPosition, GLint directionalLightDirection, GLint directionalLightColor );
 
     glm::vec3 getPosition();
+
+    glm::vec3 getVelocity();
 
     void sendViewDirection(glm::vec3 &camDir);
 

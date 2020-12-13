@@ -11,5 +11,5 @@ uniform sampler2D asteroidTex;
 
 void main()
 {
-    FragColor = vec4((light + 0.01f) * texture(asteroidTex, uv).rgb, 1);
+    FragColor = vec4((light + 0.03f) * texture(asteroidTex, uv).rgb, 1);
 }

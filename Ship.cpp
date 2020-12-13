@@ -7,7 +7,10 @@
 Ship::Ship() {}
 
 Ship::Ship(char* ShipTexturePath) {
-    //position = glm::vec3(0);
+    acceleration = 50.0f;
+    velocity = glm::vec3(0);
+    position = glm::vec3(0);
+
     shipShader = new CSCI441::ShaderProgram( "shaders/ship.v.glsl", "shaders/ship.f.glsl" );
     shipShaderUniforms.mvpMatrix      = shipShader->getUniformLocation("mvpMatrix");
     shipShaderUniforms.modelMatrix    = shipShader->getUniformLocation("modelMatrix");
@@ -26,8 +29,8 @@ Ship::Ship(char* ShipTexturePath) {
 
     engineShader = new CSCI441::ShaderProgram( "shaders/engine.v.glsl", "shaders/engine.f.glsl" );
     engineShaderUniforms.mvpMatrix    = engineShader->getUniformLocation("mvpMatrix");
-    engineShaderUniforms.time    = engineShader->getUniformLocation("time");
-
+    engineShaderUniforms.time         = engineShader->getUniformLocation("time");
+    engineShaderUniforms.forwardInput = engineShader->getUniformLocation("forwardInput");
     engineShaderAttributes.vPos       = engineShader->getAttributeLocation("vPos");
 
     model = new CSCI441::ModelLoader();
@@ -60,7 +63,7 @@ Ship::Ship(char* ShipTexturePath) {
     lightColors[1] = glm::vec3(0.0f, 0.0f, 4.0f);
     glUniform3fv(shipShaderUniforms.pointLights[1].color, 1, &lightColors[1][0]);
 
-    lightColors[2] = glm::vec3(400.0f, 400.0f, 300.0f);
+    lightColors[2] = glm::vec3(3600.0f, 3600.0f, 3000.0f);
 
     rotationSpeed = 4.0f;
 
@@ -81,7 +84,11 @@ void Ship::update(GLfloat yInput, GLfloat xInput, GLfloat flyInput, GLfloat time
 
     yaw = glm::clamp(yaw, -1.57f, 1.57f);
 
-    position += getForwardVector() * timeStep * flyInput;
+    velocity *= max(0.5f, 1.0f - 0.07f * timeStep); // apply air resistance to make ship easier to control
+    velocity += getForwardVector() * timeStep * flyInput * acceleration;
+
+    engineShader->useProgram();
+    glUniform1f(engineShaderUniforms.forwardInput, flyInput);
 }
 
 void Ship::draw(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projectionMtx, GLfloat time) {
@@ -134,7 +141,11 @@ void Ship::sendLightingData(GLint pointLight1Location, GLint pointLight1Color, G
 
 
 glm::vec3 Ship::getPosition() {
-    return glm::vec3(0);
+    return position;
+}
+
+glm::vec3 Ship::getVelocity() {
+    return velocity; //velocity is used to move asteroids around the ship for easier looping
 }
 
 glm::vec3 Ship::getForwardVector(){
@@ -145,10 +156,7 @@ glm::mat4 Ship::getTransform(){
     return glm::rotate(glm::rotate(glm::translate(glm::mat4(1), position), pitch, glm::vec3(0, 1, 0)), yaw, glm::vec3(0, 0, 1));
 }
 
-glm::vec3 Ship::shipviewCameraVector(){
-    return getForwardVector();
-}
-
 void Ship::sendViewDirection(glm::vec3 &camDir){
     glUniform3fv(shipShaderUniforms.viewDir, 1, &camDir[0]);
 }
+

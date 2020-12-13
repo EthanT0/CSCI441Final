@@ -10,8 +10,9 @@ GLfloat randNumber1( GLfloat max ) {
 
 AsteroidSystem::AsteroidSystem(){}
 
-AsteroidSystem::AsteroidSystem(char* texturePath) {
+AsteroidSystem::AsteroidSystem(char* texturePath, glm::vec3 domainScale, GLint initialCount) {
     asteroidTextureHandle = 0;
+    this->domainScale = domainScale;
 
     asteroidShaderProgram = new CSCI441::ShaderProgram( "shaders/asteroid.v.glsl", "shaders/asteroid.f.glsl" );
     asteroidShaderProgramUniforms.mvpMatrix      = asteroidShaderProgram->getUniformLocation("mvpMatrix");
@@ -142,15 +143,32 @@ AsteroidSystem::AsteroidSystem(char* texturePath) {
 
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLushort) * asteroidVertexCount, &asteroidIndices[0], GL_STATIC_DRAW);
 
-    for (int i = 0; i < 10; i ++) { // Make 100 asteroids
-        Asteroid asteroid = Asteroid(glm::vec3(randNumber1(40), randNumber1(40), randNumber1(40)), // Initial position
-                                     glm::vec3(1, 1, 1),  // Axis of rotation
-                                     glm::vec3(10, 10, 10)); // Scale
-
-
-        asteroids.push_back(asteroid);
+    for (int i = 0; i < initialCount; i ++) { // Make 100 asteroids
+        spawnAsteroid();
     }
 
+}
+
+GLboolean AsteroidSystem::update(GLfloat timeStep, Ship& ship) {
+    for(int i = 0; i < asteroids.size(); i ++){
+        asteroids[i].update(timeStep, ship.getVelocity(), domainScale);
+
+        if(asteroids[i].collisionTest(ship.getPosition(), 1.5f)) {
+            return true;
+        }
+
+
+        for(int j = 0; j < i; j ++){
+            if(asteroids[i].collisionTest(asteroids[j].getPosition())){
+                glm::vec3 delta = asteroids[i].getPosition() - asteroids[j].getPosition();
+
+                if(dot(delta, asteroids[i].getVelocity()) < 0.0f) {
+                    asteroids[i].bounce(delta);
+                    asteroids[j].bounce(delta);
+                }
+            }
+        }
+    }
 }
 
 void AsteroidSystem::draw(glm::mat4 viewMatrix, glm::mat4 projMatrix) {
@@ -185,4 +203,17 @@ void AsteroidSystem::setLightingParameters(Ship &ship, glm::vec3 &camDir) {
                           asteroidShaderProgramUniforms.directionalLights[0].position,
                           asteroidShaderProgramUniforms.directionalLights[0].direction,
                           asteroidShaderProgramUniforms.directionalLights[0].color );
+}
+
+void AsteroidSystem::spawnAsteroid() {
+    glm::vec3 position = glm::vec3(0);
+    while(length(position) < 50){
+      position = glm::vec3(randNumber1(domainScale.x / 2.0f ), randNumber1(domainScale.y / 2.0f), randNumber1(domainScale.z / 2.0f));
+    }
+
+    glm::vec3 velocity = 30.0f * glm::normalize(glm::normalize(-position) + 2.0f * glm::vec3(randNumber1(1), randNumber1(1), randNumber1(1)));
+    glm::vec3 rotationAxis = glm::normalize(glm::vec3(randNumber1(1), randNumber1(1), randNumber1(1)));
+
+
+    asteroids.push_back(Asteroid(position,  velocity, rotationAxis,  10.0f, randNumber1(1.0f)));
 }

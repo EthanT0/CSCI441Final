@@ -34,6 +34,7 @@ class AsteroidSystem {
     struct AsteroidShaderProgramUniforms asteroidShaderProgramUniforms;
     struct AsteroidShaderProgramAttributes asteroidShaderProgramAttributes;
 
+    glm::vec3 domainScale;
 
 public:
     void setLightingParameters(Ship &ship, glm::vec3 &camDir);
@@ -41,11 +42,16 @@ public:
     std::vector<Asteroid> asteroids;
 
     AsteroidSystem();
-    AsteroidSystem(char* texturePath);
+
+    AsteroidSystem(char* texturePath, glm::vec3 domainScale, GLint initialCount = 60);
+
+    GLboolean update(GLfloat timeStep, Ship& ship);
 
     void draw(glm::mat4, glm::mat4);
+
+    void spawnAsteroid();
+
     void sendMvpMatrix();
 };
-
 
 #endif //CSCI441FINAL_ASTEROIDSYSTEM_H
